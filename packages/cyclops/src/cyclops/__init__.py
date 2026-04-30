@@ -1,15 +1,19 @@
 """Cyclops — structured event emission for the Callendina app fleet.
 
-This module is the public API surface. The skeleton currently exposes the
-package version and the exception hierarchy. The internal emitter
-(``cyclops._emitter._emit``) is in place but is not yet bound to a public
-``event()`` function — that lands in #13 alongside the typed helpers.
+Public API (so far):
 
-See DESIGN.md §1–§3 for the full design.
+- :data:`__version__` — package version
+- :mod:`cyclops.context` — per-request / per-task field binding
+- :class:`~cyclops.exceptions.CyclopsError` and subclasses
+
+The free-form ``event()`` and typed helpers (``cyclops.error``, lifecycle
+helpers) land in #13 once forbidden-field enforcement is in place. See
+DESIGN.md §1–§3.
 """
 
 __version__ = "0.1.0"
 
+from cyclops import context
 from cyclops.exceptions import (
     CyclopsConfigError,
     CyclopsError,
@@ -21,4 +25,5 @@ __all__ = [
     "CyclopsError",
     "CyclopsValidationError",
     "__version__",
+    "context",
 ]

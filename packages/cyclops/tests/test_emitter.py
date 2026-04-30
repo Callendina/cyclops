@@ -78,7 +78,7 @@ def test_baseline_keys_lead_caller_keys(
 def test_caller_cannot_override_baseline_keys(
     configured_env: None, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    with pytest.raises(CyclopsValidationError, match="baseline key"):
+    with pytest.raises(CyclopsValidationError, match="reserved"):
         _emit("foo.bar", "info", {"app": "imposter"})
 
     # Nothing should have been written to stdout.
@@ -87,9 +87,21 @@ def test_caller_cannot_override_baseline_keys(
 
 @pytest.mark.parametrize(
     "bad_key",
-    ["timestamp", "level", "event_type", "host", "env", "component", "cyclops_version"],
+    [
+        "timestamp",
+        "level",
+        "event_type",
+        "host",
+        "env",
+        "component",
+        "cyclops_version",
+        "request_id",
+        "user_id",
+        "workflow_id",
+        "app_version",
+    ],
 )
-def test_each_baseline_key_is_protected(
+def test_each_reserved_key_is_protected(
     configured_env: None,
     capsys: pytest.CaptureFixture[str],
     bad_key: str,

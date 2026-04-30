@@ -13,28 +13,26 @@ def test_loads_required_env_vars(configured_env: None) -> None:
     cfg = _config._load_config()
     assert cfg.app == "test-app"
     assert cfg.env == "test"
+    assert cfg.app_version == "0.0.0-test"
     assert cfg.component == "test-app.unit"
     assert cfg.host == socket.gethostname()
 
 
-def test_missing_app_name_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("ENVIRONMENT", "test")
-    monkeypatch.setenv("CYCLOPS_COMPONENT", "test-app.unit")
-    with pytest.raises(CyclopsConfigError, match="APP_NAME"):
-        _config._load_config()
-
-
-def test_missing_environment_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("APP_NAME", "test-app")
-    monkeypatch.setenv("CYCLOPS_COMPONENT", "test-app.unit")
-    with pytest.raises(CyclopsConfigError, match="ENVIRONMENT"):
-        _config._load_config()
-
-
-def test_missing_component_raises(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("APP_NAME", "test-app")
-    monkeypatch.setenv("ENVIRONMENT", "test")
-    with pytest.raises(CyclopsConfigError, match="CYCLOPS_COMPONENT"):
+@pytest.mark.parametrize(
+    "missing_var",
+    ["APP_NAME", "ENVIRONMENT", "APP_VERSION", "CYCLOPS_COMPONENT"],
+)
+def test_missing_any_required_var_raises(monkeypatch: pytest.MonkeyPatch, missing_var: str) -> None:
+    all_vars = {
+        "APP_NAME": "test-app",
+        "ENVIRONMENT": "test",
+        "APP_VERSION": "0.0.0-test",
+        "CYCLOPS_COMPONENT": "test-app.unit",
+    }
+    del all_vars[missing_var]
+    for k, v in all_vars.items():
+        monkeypatch.setenv(k, v)
+    with pytest.raises(CyclopsConfigError, match=missing_var):
         _config._load_config()
 
 
@@ -44,12 +42,14 @@ def test_all_missing_listed_in_error(monkeypatch: pytest.MonkeyPatch) -> None:
     msg = str(exc_info.value)
     assert "APP_NAME" in msg
     assert "ENVIRONMENT" in msg
+    assert "APP_VERSION" in msg
     assert "CYCLOPS_COMPONENT" in msg
 
 
 def test_empty_string_treated_as_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_NAME", "")
     monkeypatch.setenv("ENVIRONMENT", "test")
+    monkeypatch.setenv("APP_VERSION", "0.0.0-test")
     monkeypatch.setenv("CYCLOPS_COMPONENT", "test-app.unit")
     with pytest.raises(CyclopsConfigError, match="APP_NAME"):
         _config._load_config()
