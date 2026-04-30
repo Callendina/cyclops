@@ -133,3 +133,48 @@ def test_auth_iframe(client, monkeypatch) -> None:
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert "cyclops-auth" in body
+
+
+def test_events_search_renders(client, monkeypatch) -> None:
+    from cyclops_ui import app as app_module
+
+    captured_query: dict[str, str] = {}
+
+    def fake_query(*args, **kwargs):
+        captured_query["query"] = kwargs["query"]
+        return [
+            {
+                "app": "vispay",
+                "level": "error",
+                "event_type": "vispay.tx.failed",
+                "message": "boom",
+                "timestamp": "2026-04-30T17:00:00Z",
+                "_loki_timestamp_ns": "1777520400000000000",
+                "_labels": {"app": "vispay", "level": "error"},
+            }
+        ]
+
+    monkeypatch.setattr(app_module, "query_range", fake_query)
+    monkeypatch.setattr(app_module.cyclops, "event", lambda *a, **kw: None)
+    resp = client.get("/events?app=vispay&level=error&event_type=vispay.tx.failed&since=1h")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "vispay.tx.failed" in body
+    assert "copy json" in body.lower()
+    # filter form preserves selections
+    assert 'value="vispay" selected' in body or 'value="vispay"selected' in body
+    # query was constructed with all filters
+    assert 'app="vispay"' in captured_query["query"]
+    assert 'level="error"' in captured_query["query"]
+    assert 'event_type="vispay.tx.failed"' in captured_query["query"]
+
+
+def test_events_search_empty(client, monkeypatch) -> None:
+    from cyclops_ui import app as app_module
+
+    monkeypatch.setattr(app_module, "query_range", lambda *a, **kw: [])
+    monkeypatch.setattr(app_module.cyclops, "event", lambda *a, **kw: None)
+    resp = client.get("/events")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "no events match" in body.lower()

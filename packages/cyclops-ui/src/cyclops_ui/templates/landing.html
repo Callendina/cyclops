@@ -15,62 +15,10 @@
 </section>
 
 <section class="recent">
-  <h2>recent activity</h2>
-  {% if recent_error %}
-    <p class="error-banner">couldn't load recent events: {{ recent_error }}</p>
-  {% elif not recent %}
-    <p class="empty">no events in the last 5 minutes.</p>
-  {% else %}
-    <table class="events">
-      <thead>
-        <tr><th></th><th>time</th><th>app</th><th>level</th><th>event</th><th>message</th></tr>
-      </thead>
-      <tbody>
-        {% for ev in recent %}
-          <tr class="ev-row lvl-{{ ev.level or 'info' }}" data-row="{{ loop.index }}">
-            <td class="caret">▸</td>
-            <td class="t">{{ ev.timestamp_short }}</td>
-            <td class="a">{{ ev.app }}</td>
-            <td class="l">{{ ev.level or '' }}</td>
-            <td class="e">{{ ev.event_type or '' }}</td>
-            <td class="m">{{ ev.message or '' }}</td>
-          </tr>
-          <tr class="ev-detail" id="ev-detail-{{ loop.index }}" hidden>
-            <td colspan="6">
-              <div class="ev-detail-bar">
-                <button type="button" class="copy-btn" data-target="ev-json-{{ loop.index }}">copy json</button>
-              </div>
-              <pre id="ev-json-{{ loop.index }}"><code>{{ ev.raw_json }}</code></pre>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <script>
-      document.querySelectorAll('.ev-row').forEach(row => {
-        row.addEventListener('click', () => {
-          const detail = document.getElementById('ev-detail-' + row.dataset.row);
-          if (!detail) return;
-          detail.hidden = !detail.hidden;
-          row.querySelector('.caret').textContent = detail.hidden ? '▸' : '▾';
-        });
-      });
-      document.querySelectorAll('.copy-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          const code = document.getElementById(btn.dataset.target);
-          if (!code) return;
-          try {
-            await navigator.clipboard.writeText(code.textContent);
-            const orig = btn.textContent;
-            btn.textContent = 'copied';
-            setTimeout(() => { btn.textContent = orig; }, 1200);
-          } catch (err) {
-            btn.textContent = 'copy failed';
-          }
-        });
-      });
-    </script>
-  {% endif %}
+  <h2>recent activity <a class="section-link" href="/events">search →</a></h2>
+  {% set events = recent %}
+  {% set events_error = recent_error %}
+  {% set empty_msg = 'no events in the last 5 minutes.' %}
+  {% include "_events_table.html" %}
 </section>
 {% endblock %}

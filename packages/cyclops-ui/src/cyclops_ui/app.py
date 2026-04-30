@@ -230,6 +230,64 @@ def auth() -> str:
     )
 
 
+@app.get("/events")
+def events_search() -> str:
+    """Filterable events page with copy-json affordance per row."""
+    app_filter = request.args.get("app", "").strip()
+    level = request.args.get("level", "").strip()
+    event_type = request.args.get("event_type", "").strip()
+    since_str = request.args.get("since", "1h").strip() or "1h"
+    since_seconds = parse_since(since_str, default_seconds=3600)
+    try:
+        limit = int(request.args.get("limit", "100") or "100")
+    except ValueError:
+        limit = 100
+    limit = max(1, min(limit, 500))
+
+    label_parts = ['source="cyclops"']
+    if app_filter:
+        label_parts.append(f'app="{app_filter}"')
+    if level:
+        label_parts.append(f'level="{level}"')
+    selector = "{" + ", ".join(label_parts) + "}"
+    query = selector
+    if event_type:
+        escaped = event_type.replace('"', '\\"')
+        query = f'{selector} | json | event_type="{escaped}"'
+
+    rows: list[dict[str, Any]] = []
+    events_error: str | None = None
+    try:
+        raw = query_range(CONFIG.loki_url, query=query, since_seconds=since_seconds, limit=limit)
+        rows = [_event_for_table(ev) for ev in raw]
+    except LokiError as exc:
+        events_error = f"loki query failed: {exc}"
+        cyclops.error("cyclops_ui.events.query", exception=exc, route="/events")
+
+    cyclops.event(
+        "cyclops_ui.events.searched",
+        app_filter=app_filter,
+        level_filter=level,
+        event_type_filter=event_type,
+        since=since_str,
+        result_count=len(rows),
+    )
+
+    return render_template(
+        "events.html",
+        events=rows,
+        events_error=events_error,
+        query=query,
+        filters={
+            "app": app_filter,
+            "level": level,
+            "event_type": event_type,
+            "since": since_str,
+            "limit": limit,
+        },
+    )
+
+
 @app.get("/about")
 def about() -> str:
     versions = {

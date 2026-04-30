@@ -1,0 +1,62 @@
+{# Reusable events table with click-to-expand JSON + copy button.
+   Inputs:
+     events       — list of dicts from _event_for_table()
+     events_error — optional error string (rendered as banner)
+     empty_msg    — message when events is empty
+#}
+{% if events_error %}
+  <p class="error-banner">{{ events_error }}</p>
+{% elif not events %}
+  <p class="empty">{{ empty_msg or 'no events.' }}</p>
+{% else %}
+  <table class="events">
+    <thead>
+      <tr><th></th><th>time</th><th>app</th><th>level</th><th>event</th><th>message</th></tr>
+    </thead>
+    <tbody>
+      {% for ev in events %}
+        <tr class="ev-row lvl-{{ ev.level or 'info' }}" data-row="{{ loop.index }}">
+          <td class="caret">▸</td>
+          <td class="t">{{ ev.timestamp_short }}</td>
+          <td class="a">{{ ev.app }}</td>
+          <td class="l">{{ ev.level or '' }}</td>
+          <td class="e">{{ ev.event_type or '' }}</td>
+          <td class="m">{{ ev.message or '' }}</td>
+        </tr>
+        <tr class="ev-detail" id="ev-detail-{{ loop.index }}" hidden>
+          <td colspan="6">
+            <div class="ev-detail-bar">
+              <button type="button" class="copy-btn" data-target="ev-json-{{ loop.index }}">copy json</button>
+            </div>
+            <pre id="ev-json-{{ loop.index }}"><code>{{ ev.raw_json }}</code></pre>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <script>
+    document.querySelectorAll('.ev-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const detail = document.getElementById('ev-detail-' + row.dataset.row);
+        if (!detail) return;
+        detail.hidden = !detail.hidden;
+        row.querySelector('.caret').textContent = detail.hidden ? '▸' : '▾';
+      });
+    });
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const code = document.getElementById(btn.dataset.target);
+        if (!code) return;
+        try {
+          await navigator.clipboard.writeText(code.textContent);
+          const orig = btn.textContent;
+          btn.textContent = 'copied';
+          setTimeout(() => { btn.textContent = orig; }, 1200);
+        } catch (err) {
+          btn.textContent = 'copy failed';
+        }
+      });
+    });
+  </script>
+{% endif %}
