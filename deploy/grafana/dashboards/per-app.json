@@ -106,21 +106,20 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "App version",
+      "title": "Hosts emitting (5m)",
       "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
       "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(1, last_over_time({app=\"$app\", source=\"cyclops\"} | json | unwrap_label app_version | __error__=\"\" [10m]))",
-          "queryType": "instant"
+          "expr": "count(sum by (host) (count_over_time({app=\"$app\", source=\"cyclops\"}[5m])))"
         }
       ],
       "options": {
         "colorMode": "value",
-        "textMode": "value",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "/^app_version$/"}
-      }
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
     },
     {
       "id": 5,
