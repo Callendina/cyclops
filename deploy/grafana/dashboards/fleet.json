@@ -109,7 +109,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (app) (rate({source=\"cyclops\"}[$__rate_interval]))",
+          "expr": "sum by (app) (rate({source=\"cyclops\"}[$__interval]))",
           "legendFormat": "{{app}}"
         }
       ],
@@ -134,7 +134,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (app) (rate({source=\"cyclops\", level=~\"error|critical\"}[$__rate_interval]))",
+          "expr": "sum by (app) (rate({source=\"cyclops\", level=~\"error|critical\"}[$__interval]))",
           "legendFormat": "{{app}}"
         }
       ],

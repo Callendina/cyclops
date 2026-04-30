@@ -39,9 +39,7 @@ _cached: Config | None = None
 def load() -> Config:
     env = os.environ.get("ENVIRONMENT", "").strip()
     if env not in ("staging", "prod", "dev"):
-        raise ConfigError(
-            f"ENVIRONMENT must be one of staging|prod|dev, got {env!r}"
-        )
+        raise ConfigError(f"ENVIRONMENT must be one of staging|prod|dev, got {env!r}")
 
     grafana_public_url = os.environ.get("GRAFANA_PUBLIC_URL", "").strip().rstrip("/")
     if not grafana_public_url:

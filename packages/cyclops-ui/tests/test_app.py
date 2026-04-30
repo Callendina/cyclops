@@ -23,12 +23,8 @@ def test_version_is_semver() -> None:
 @pytest.fixture(scope="module")
 def client():
     os.environ.setdefault("ENVIRONMENT", "dev")
-    os.environ.setdefault(
-        "GRAFANA_PUBLIC_URL", "http://localhost:3000/grafana"
-    )
-    os.environ.setdefault(
-        "KNOWN_APPS", "vispay,scout,gatekeeper,corkboard,cyclops-ui"
-    )
+    os.environ.setdefault("GRAFANA_PUBLIC_URL", "http://localhost:3000/grafana")
+    os.environ.setdefault("KNOWN_APPS", "vispay,scout,gatekeeper,corkboard,cyclops-ui")
 
     from cyclops_ui.app import app
 
@@ -47,9 +43,7 @@ def test_landing_renders(client, monkeypatch) -> None:
     # Stub out Loki so the landing page renders even without a live Loki.
     from cyclops_ui import app as app_module
 
-    monkeypatch.setattr(
-        app_module, "query_range", lambda *a, **kw: []
-    )
+    monkeypatch.setattr(app_module, "query_range", lambda *a, **kw: [])
     resp = client.get("/")
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)

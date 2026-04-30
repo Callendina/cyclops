@@ -130,7 +130,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (level) (rate({app=\"$app\", source=\"cyclops\"}[$__rate_interval]))",
+          "expr": "sum by (level) (rate({app=\"$app\", source=\"cyclops\"}[$__interval]))",
           "legendFormat": "{{level}}"
         }
       ],

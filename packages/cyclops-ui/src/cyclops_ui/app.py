@@ -118,8 +118,7 @@ def _inject_chrome() -> dict[str, Any]:
         "known_apps": CONFIG.known_apps,
         "grafana_public_url": CONFIG.grafana_public_url,
         "user": request.headers.get("X-Gatekeeper-User", ""),
-        "is_system_admin": request.headers.get("X-Gatekeeper-System-Admin", "")
-        == "true",
+        "is_system_admin": request.headers.get("X-Gatekeeper-System-Admin", "") == "true",
     }
 
 
@@ -136,7 +135,7 @@ def _grafana_url(uid: str, *, params: dict[str, str]) -> str:
 
 
 @app.get("/health")
-def health() -> tuple[dict, int]:
+def health() -> tuple[dict[str, str], int]:
     return {"status": "ok"}, 200
 
 
@@ -283,9 +282,7 @@ def api_errors() -> tuple[Any, int]:
     query = "{" + ", ".join(label_parts) + "}"
 
     try:
-        events = query_range(
-            CONFIG.loki_url, query=query, since_seconds=since_seconds, limit=limit
-        )
+        events = query_range(CONFIG.loki_url, query=query, since_seconds=since_seconds, limit=limit)
     except LokiError as exc:
         cyclops.error("cyclops_ui.api.errors", exception=exc, route="/api/dev/errors")
         return jsonify({"error": "loki_query_failed", "detail": str(exc)}), 502
@@ -334,9 +331,7 @@ def api_events() -> tuple[Any, int]:
         query = f'{selector} | json | event_type="{escaped}"'
 
     try:
-        events = query_range(
-            CONFIG.loki_url, query=query, since_seconds=since_seconds, limit=limit
-        )
+        events = query_range(CONFIG.loki_url, query=query, since_seconds=since_seconds, limit=limit)
     except LokiError as exc:
         cyclops.error("cyclops_ui.api.events", exception=exc, route="/api/dev/events")
         return jsonify({"error": "loki_query_failed", "detail": str(exc)}), 502
