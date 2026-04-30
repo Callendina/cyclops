@@ -17,7 +17,7 @@
       "type": "stat",
       "title": "Apps emitting (last 5m)",
       "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
-      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
       "targets": [
         {
           "refId": "A",
@@ -35,7 +35,7 @@
       "type": "stat",
       "title": "Total events / min",
       "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
-      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
       "targets": [
         {
           "refId": "A",
@@ -54,7 +54,7 @@
       "type": "stat",
       "title": "Errors / min (last 5m)",
       "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
-      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
       "targets": [
         {
           "refId": "A",
@@ -87,7 +87,7 @@
       "type": "stat",
       "title": "Active hosts",
       "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
-      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
       "targets": [
         {
           "refId": "A",
@@ -105,7 +105,7 @@
       "type": "timeseries",
       "title": "Events / sec by app",
       "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
-      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
       "targets": [
         {
           "refId": "A",
@@ -130,7 +130,7 @@
       "type": "timeseries",
       "title": "Errors / sec by app",
       "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
-      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
       "targets": [
         {
           "refId": "A",
@@ -155,7 +155,7 @@
       "type": "table",
       "title": "Apps by event volume (last 1h)",
       "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
-      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
       "targets": [
         {
           "refId": "A",
@@ -179,7 +179,7 @@
       "type": "logs",
       "title": "Recent fleet activity",
       "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
-      "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
       "targets": [
         {
           "refId": "A",
