@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cyclops-ui"
+version = "0.1.0"
+description = "Branded Flask wrapper around Grafana for the Cyclops observability stack."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Callendina" }]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Framework :: Flask",
+  "Intended Audience :: Developers",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Typing :: Typed",
+]
+dependencies = [
+  "flask>=3.0",
+  "cyclops",
+]
+
+[project.urls]
+Repository = "https://github.com/Callendina/cyclops"
+Issues = "https://cyclops-staging.callendina.com/corkboard/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cyclops_ui"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/cyclops_ui", "README.md", "pyproject.toml"]

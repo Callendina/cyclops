@@ -1,0 +1,36 @@
+# Repo-root tool config. This file does NOT define a Python package — the
+# packages live under packages/cyclops and packages/cyclops-ui, each with its
+# own pyproject.toml. Settings here apply across the workspace.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle errors
+  "F",    # pyflakes
+  "W",    # pycodestyle warnings
+  "I",    # isort
+  "UP",   # pyupgrade
+  "B",    # flake8-bugbear
+  "C4",   # flake8-comprehensions
+  "SIM",  # flake8-simplify
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+files = ["packages/cyclops/src", "packages/cyclops-ui/src"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/cyclops/tests", "packages/cyclops-ui/tests"]
+addopts = ["-ra", "--strict-markers", "--import-mode=importlib"]

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cyclops"
+version = "0.1.0"
+description = "Structured event emission for the Callendina app fleet."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Callendina" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: System :: Logging",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+flask = ["flask>=3.0"]
+
+[project.urls]
+Repository = "https://github.com/Callendina/cyclops"
+Issues = "https://cyclops-staging.callendina.com/corkboard/"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cyclops"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/cyclops", "README.md", "pyproject.toml"]
