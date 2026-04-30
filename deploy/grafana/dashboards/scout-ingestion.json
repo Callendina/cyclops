@@ -1,0 +1,154 @@
+{
+  "uid": "scout-ingestion",
+  "title": "Scout — Ingestion",
+  "tags": ["scout", "ingestion", "cms"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "CMS calls (24h)",
+      "description": "Every outbound HTTP request via api/http_cache.py. Excludes anthropic.messages.create.",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target!=\"anthropic.messages.create\" [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "CMS failures (24h)",
+      "description": "outcome=failure on any non-anthropic api.call. Spike = a CMS is down.",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target!=\"anthropic.messages.create\" | outcome=\"failure\" [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 5},
+              {"color": "red", "value": 50}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Cache hits (24h)",
+      "description": "requests_cache returned a cached response → no upstream call. Higher = cheaper, faster.",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target!=\"anthropic.messages.create\" | cache_hit=\"true\" [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Cache misses (24h)",
+      "description": "Real upstream requests. Sustained high count for a single host = cache TTL too short or misconfigured.",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target!=\"anthropic.messages.create\" | cache_hit=\"false\" [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Calls per hour, top targets",
+      "description": "topk(10) target paths over the period. Top entries should be the active CMSs (squadi, nbl1, geniussports, etc).",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "topk(10, sum by (target) (count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target!=\"anthropic.messages.create\" [1h])))",
+        "legendFormat": "{{ target }}"
+      }],
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "fillOpacity": 20}}}
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "p95 latency by target (ms, top 10)",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "topk(10, quantile_over_time(0.95, {app=\"scout\"} | json | event_type=\"api.call\" | target!=\"anthropic.messages.create\" | unwrap duration_ms [10m]) by (target))",
+        "legendFormat": "{{ target }}"
+      }],
+      "fieldConfig": {"defaults": {"unit": "ms"}}
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Cache hit ratio by target (24h, top 20)",
+      "description": "Higher % = effective caching. 0% = TTL too short or always-uncached path. ~100% = TTL too long maybe.",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "topk(20, sum by (target, cache_hit) (count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target!=\"anthropic.messages.create\" [24h])))",
+        "instant": true,
+        "format": "table"
+      }]
+    },
+    {
+      "id": 8,
+      "type": "text",
+      "title": "Per-comp games refreshed (24h) — TODO",
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "options": {
+        "mode": "markdown",
+        "content": "**Not yet wired.** This panel needs a `scout.match.refreshed` cyclops event emitted from `api/BasketballGame.py:enrich_completed_game()` carrying `competition_id`, `fq_match_id`, `pbp_action_count`, and `data_source`. Once shipped, replace this text panel with:\n\n```\nsum by (competition_id) (\n  count_over_time(\n    {app=\"scout\"} | json | event_type=\"scout.match.refreshed\" [24h]\n  )\n)\n```\n\nas a stat-table, sorted descending. v1 of this dashboard uses the CMS-call panels above as a proxy — top targets reveal which CMSs are being hit, which is one layer removed from \"games loaded\"."
+      }
+    }
+  ]
+}
