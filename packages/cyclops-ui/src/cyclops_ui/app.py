@@ -216,6 +216,20 @@ def errors() -> str:
     )
 
 
+@app.get("/auth")
+def auth() -> str:
+    grafana_url = _grafana_url(
+        "cyclops-auth",
+        params={"from": "now-6h", "to": "now"},
+    )
+    cyclops.event("cyclops_ui.dashboard.viewed", dashboard="auth")
+    return render_template(
+        "iframe.html",
+        title="auth",
+        grafana_url=grafana_url,
+    )
+
+
 @app.get("/about")
 def about() -> str:
     versions = {

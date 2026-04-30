@@ -104,3 +104,13 @@ def test_errors_iframe(client, monkeypatch) -> None:
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert "cyclops-errors" in body
+
+
+def test_auth_iframe(client, monkeypatch) -> None:
+    from cyclops_ui import app as app_module
+
+    monkeypatch.setattr(app_module.cyclops, "event", lambda *a, **kw: None)
+    resp = client.get("/auth")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "cyclops-auth" in body
