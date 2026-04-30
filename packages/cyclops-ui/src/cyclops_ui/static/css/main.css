@@ -102,7 +102,8 @@ h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: v
 
 .iframe-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .iframe-bar h2 { margin: 0; }
-.open-grafana { font-size: 12px; }
+.iframe-bar-links { display: flex; gap: 14px; }
+.iframe-link { font-size: 12px; }
 .grafana-frame { flex: 1; width: 100%; border: 0; }
 
 .kv { border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }

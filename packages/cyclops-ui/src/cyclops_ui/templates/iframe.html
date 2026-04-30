@@ -4,7 +4,12 @@
 {% block content %}
 <div class="iframe-bar">
   <h2>{{ title }}</h2>
-  <a class="open-grafana" href="{{ grafana_url }}" target="_blank" rel="noopener">open in grafana ↗</a>
+  <div class="iframe-bar-links">
+    {% if events_url %}
+      <a class="iframe-link" href="{{ events_url }}" title="searchable event list with copy-json">browse events ↗</a>
+    {% endif %}
+    <a class="iframe-link" href="{{ grafana_url }}" target="_blank" rel="noopener">open in grafana ↗</a>
+  </div>
 </div>
 <iframe class="grafana-frame" src="{{ grafana_url }}" title="{{ title }}"></iframe>
 {% endblock %}

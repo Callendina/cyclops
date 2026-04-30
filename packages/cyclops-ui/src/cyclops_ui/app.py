@@ -185,6 +185,7 @@ def per_app(app_name: str) -> str:
         "iframe.html",
         title=f"{app_name}",
         grafana_url=grafana_url,
+        events_url=f"/events?app={app_name}&since=24h",
     )
 
 
@@ -199,6 +200,7 @@ def fleet() -> str:
         "iframe.html",
         title="fleet",
         grafana_url=grafana_url,
+        events_url="/events?since=1h",
     )
 
 
@@ -213,6 +215,7 @@ def errors() -> str:
         "iframe.html",
         title="errors",
         grafana_url=grafana_url,
+        events_url="/events?level=error&since=6h",
     )
 
 
@@ -227,6 +230,7 @@ def auth() -> str:
         "iframe.html",
         title="auth",
         grafana_url=grafana_url,
+        events_url="/events?app=gatekeeper&event_type=gatekeeper.access&since=6h",
     )
 
 
