@@ -17,6 +17,7 @@ Cyclops env-var setup happens at the top of this module (before
 
 from __future__ import annotations
 
+import json
 import os
 import socket
 import subprocess
@@ -376,12 +377,14 @@ def _event_for_table(ev: dict[str, Any]) -> dict[str, Any]:
         except (ValueError, TypeError):
             pass
     msg = ev.get("message") or ev.get("error_class") or ""
+    raw = {k: v for k, v in ev.items() if k != "_labels"}
     return {
         "timestamp_short": ts_short,
         "app": ev.get("app") or labels.get("app") or "",
         "level": ev.get("level") or labels.get("level") or "",
         "event_type": ev.get("event_type") or "",
         "message": str(msg)[:200],
+        "raw_json": json.dumps(raw, indent=2, default=str, sort_keys=True),
     }
 
 
