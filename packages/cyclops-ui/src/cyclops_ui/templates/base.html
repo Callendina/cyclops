@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}cyclops{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <header class="topbar">
+    <a class="brand" href="/">cyclops</a>
+    <span class="env env-{{ environment }}">{{ environment|upper }}</span>
+    <nav class="nav">
+      <a href="/global" {% if request.path == '/global' %}class="active"{% endif %}>fleet</a>
+      <a href="/errors" {% if request.path == '/errors' %}class="active"{% endif %}>errors</a>
+      <a href="/grafana/" target="_blank" rel="noopener">grafana</a>
+      <a href="/about" {% if request.path == '/about' %}class="active"{% endif %}>about</a>
+    </nav>
+    <div class="user">
+      {% if user %}
+        <span class="who">{{ user }}{% if is_system_admin %} <span class="adm">admin</span>{% endif %}</span>
+        <a class="signout" href="/_auth/logout">sign out</a>
+      {% else %}
+        <span class="who anon">anonymous</span>
+      {% endif %}
+    </div>
+  </header>
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

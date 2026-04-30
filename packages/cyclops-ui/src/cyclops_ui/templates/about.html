@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}about — cyclops{% endblock %}
+{% block content %}
+<section class="about">
+  <h2>about</h2>
+  <table class="kv">
+    <tr><th>service</th><td>cyclops-ui</td></tr>
+    <tr><th>cyclops-ui version</th><td>{{ versions.cyclops_ui }}</td></tr>
+    <tr><th>cyclops library version</th><td>{{ versions.cyclops }}</td></tr>
+    <tr><th>environment</th><td>{{ environment }}</td></tr>
+    <tr><th>hostname</th><td>{{ versions.hostname }}</td></tr>
+    <tr><th>known apps</th><td>{{ known_apps|join(', ') }}</td></tr>
+    <tr><th>grafana</th><td><a href="{{ grafana_public_url }}" target="_blank" rel="noopener">{{ grafana_public_url }}</a></td></tr>
+  </table>
+  <p class="hint">grafana / loki / alloy versions are visible in their own admin pages.</p>
+</section>
+{% endblock %}

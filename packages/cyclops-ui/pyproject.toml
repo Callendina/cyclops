@@ -31,5 +31,9 @@ Issues = "https://cyclops-staging.callendina.com/corkboard/"
 [tool.hatch.build.targets.wheel]
 packages = ["src/cyclops_ui"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"src/cyclops_ui/templates" = "cyclops_ui/templates"
+"src/cyclops_ui/static" = "cyclops_ui/static"
+
 [tool.hatch.build.targets.sdist]
 include = ["src/cyclops_ui", "README.md", "pyproject.toml"]

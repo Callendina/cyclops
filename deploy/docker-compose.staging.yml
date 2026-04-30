@@ -42,3 +42,6 @@ services:
     environment:
       LOKI_URL: "http://loki:3100"
       CYCLOPS_UI_ENV: "staging"
+      ENVIRONMENT: "staging"
+      GRAFANA_PUBLIC_URL: "https://cyclops-staging.callendina.com/grafana"
+      KNOWN_APPS: "vispay,scout,gatekeeper,corkboard,cyclops-ui"

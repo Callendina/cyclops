@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — cyclops{% endblock %}
+{% block body_class %}page-iframe{% endblock %}
+{% block content %}
+<div class="iframe-bar">
+  <h2>{{ title }}</h2>
+  <a class="open-grafana" href="{{ grafana_url }}" target="_blank" rel="noopener">open in grafana ↗</a>
+</div>
+<iframe class="grafana-frame" src="{{ grafana_url }}" title="{{ title }}"></iframe>
+{% endblock %}

@@ -9,11 +9,10 @@ from __future__ import annotations
 
 import json
 import time
+import urllib.parse
+import urllib.request
 from collections.abc import Iterator
 from typing import Any
-
-import urllib.request
-import urllib.parse
 
 
 class LokiError(RuntimeError):

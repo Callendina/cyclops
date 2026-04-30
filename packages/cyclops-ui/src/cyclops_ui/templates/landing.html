@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}cyclops — {{ environment }}{% endblock %}
+{% block body_class %}page-landing{% endblock %}
+{% block content %}
+<section class="apps">
+  <h2>apps</h2>
+  <div class="cards">
+    {% for app in known_apps %}
+      <a class="card" href="/app/{{ app }}">
+        <span class="card-name">{{ app }}</span>
+        <span class="card-hint">per-app dashboard →</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="recent">
+  <h2>recent activity</h2>
+  {% if recent_error %}
+    <p class="error-banner">couldn't load recent events: {{ recent_error }}</p>
+  {% elif not recent %}
+    <p class="empty">no events in the last 5 minutes.</p>
+  {% else %}
+    <table class="events">
+      <thead>
+        <tr><th>time</th><th>app</th><th>level</th><th>event</th><th>message</th></tr>
+      </thead>
+      <tbody>
+        {% for ev in recent %}
+          <tr class="lvl-{{ ev.level or 'info' }}">
+            <td class="t">{{ ev.timestamp_short }}</td>
+            <td class="a">{{ ev.app }}</td>
+            <td class="l">{{ ev.level or '' }}</td>
+            <td class="e">{{ ev.event_type or '' }}</td>
+            <td class="m">{{ ev.message or '' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+{% endblock %}

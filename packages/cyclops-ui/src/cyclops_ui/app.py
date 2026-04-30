@@ -1,27 +1,29 @@
-"""Cyclops-UI — Flask app exposing a small JSON API over Loki.
-
-For the Phase 4 scope check-in: this lands the API surface (so a Claude
-session, or any tool, can hit
-https://cyclops-staging.callendina.com/api/dev/errors with an X-API-Key
-header and get back recent error events) but defers the branded landing
-page / per-app dashboard iframes (DESIGN.md §10) — those come when
-Phase 4 is fully resumed.
+"""Cyclops-UI — Flask app: branded shell + Loki query API.
 
 Routes:
 - GET /health                 — liveness, no auth required
-- GET /api/dev/errors         — recent error/critical events
-- GET /api/dev/events         — generic event search
+- GET /                       — landing page (app picker + recent activity)
+- GET /app/<app_name>         — per-app Grafana iframe
+- GET /global                 — fleet Grafana iframe
+- GET /errors                 — errors Grafana iframe
+- GET /about                  — service + version info
+- GET /_self/events           — recent cyclops-ui events (JSON)
+- GET /api/dev/errors         — recent error/critical events (JSON)
+- GET /api/dev/events         — generic event search (JSON)
 
-The cyclops env-var setup happens at the top of this module (before
+Cyclops env-var setup happens at the top of this module (before
 `import cyclops`) so the library's config picks them up on first emission.
 """
 
 from __future__ import annotations
 
 import os
+import socket
 import subprocess
-from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
+from urllib.parse import urlencode
 
 # --- cyclops env vars (must precede `import cyclops`) ---------------------
 
@@ -50,25 +52,24 @@ os.environ.setdefault(
     "ENVIRONMENT",
     "staging"
     if (os.environ.get("CYCLOPS_UI_ENV") or "").lower().startswith("staging")
-    else "prod",
+    else os.environ.get("ENVIRONMENT", "prod"),
 )
 os.environ.setdefault("APP_VERSION", f"v{APP_VERSION}")
 os.environ.setdefault("CYCLOPS_COMPONENT", "cyclops-ui.web")
 
 
 import cyclops  # noqa: E402
-
-from flask import Flask, jsonify, request  # noqa: E402
+from flask import Flask, abort, jsonify, render_template, request  # noqa: E402
 
 from cyclops_ui import __version__ as cyclops_ui_version  # noqa: E402
+from cyclops_ui.config import get_config  # noqa: E402
 from cyclops_ui.loki_client import (  # noqa: E402
     LokiError,
     parse_since,
     query_range,
 )
 
-LOKI_URL = os.environ.get("LOKI_URL", "http://loki:3100")
-ENVIRONMENT = os.environ["ENVIRONMENT"]
+CONFIG = get_config()
 
 
 app = Flask(__name__)
@@ -109,16 +110,149 @@ def _release_cyclops_context(_exc: BaseException | None) -> None:
         cm.__exit__(None, None, None)
 
 
+@app.context_processor
+def _inject_chrome() -> dict[str, Any]:
+    """Make env / user / nav data available to every template."""
+    return {
+        "environment": CONFIG.environment,
+        "known_apps": CONFIG.known_apps,
+        "grafana_public_url": CONFIG.grafana_public_url,
+        "user": request.headers.get("X-Gatekeeper-User", ""),
+        "is_system_admin": request.headers.get("X-Gatekeeper-System-Admin", "")
+        == "true",
+    }
+
+
+# --- Iframe URL helpers ---------------------------------------------------
+
+
+def _grafana_url(uid: str, *, params: dict[str, str]) -> str:
+    base = CONFIG.grafana_public_url
+    qs = urlencode({**params, "kiosk": "tv"})
+    return f"{base}/d/{uid}/{uid}?{qs}"
+
+
 # --- Routes ---------------------------------------------------------------
 
 
 @app.get("/health")
-def health() -> "tuple[dict, int]":
+def health() -> tuple[dict, int]:
     return {"status": "ok"}, 200
 
 
+@app.get("/")
+def landing() -> str:
+    """Branded landing page: app picker + recent activity."""
+    recent: list[dict[str, Any]] = []
+    recent_error: str | None = None
+    try:
+        events = query_range(
+            CONFIG.loki_url,
+            query='{source="cyclops"}',
+            since_seconds=300,
+            limit=20,
+        )
+        for ev in events:
+            recent.append(_event_for_table(ev))
+    except LokiError as exc:
+        recent_error = str(exc)
+        cyclops.error(
+            "cyclops_ui.landing.recent",
+            exception=exc,
+            route="/",
+        )
+    return render_template("landing.html", recent=recent, recent_error=recent_error)
+
+
+@app.get("/app/<app_name>")
+def per_app(app_name: str) -> str:
+    if app_name not in CONFIG.known_apps:
+        abort(404)
+    grafana_url = _grafana_url(
+        "cyclops-per-app",
+        params={
+            "var-app": app_name,
+            "from": "now-24h",
+            "to": "now",
+        },
+    )
+    cyclops.event(
+        "cyclops_ui.dashboard.viewed",
+        dashboard="per-app",
+        app_filter=app_name,
+    )
+    return render_template(
+        "iframe.html",
+        title=f"{app_name}",
+        grafana_url=grafana_url,
+    )
+
+
+@app.get("/global")
+def fleet() -> str:
+    grafana_url = _grafana_url(
+        "cyclops-fleet",
+        params={"from": "now-24h", "to": "now"},
+    )
+    cyclops.event("cyclops_ui.dashboard.viewed", dashboard="fleet")
+    return render_template(
+        "iframe.html",
+        title="fleet",
+        grafana_url=grafana_url,
+    )
+
+
+@app.get("/errors")
+def errors() -> str:
+    grafana_url = _grafana_url(
+        "cyclops-errors",
+        params={"from": "now-6h", "to": "now"},
+    )
+    cyclops.event("cyclops_ui.dashboard.viewed", dashboard="errors")
+    return render_template(
+        "iframe.html",
+        title="errors",
+        grafana_url=grafana_url,
+    )
+
+
+@app.get("/about")
+def about() -> str:
+    versions = {
+        "cyclops_ui": cyclops_ui_version,
+        "cyclops": cyclops.__version__,
+        "hostname": socket.gethostname(),
+    }
+    return render_template("about.html", versions=versions)
+
+
+@app.get("/_self/events")
+def self_events() -> tuple[Any, int]:
+    """Recent events emitted by cyclops-ui itself. Useful for debugging."""
+    since_seconds = parse_since(request.args.get("since"), default_seconds=3600)
+    limit = min(int(request.args.get("limit", "100") or "100"), 500)
+    try:
+        events = query_range(
+            CONFIG.loki_url,
+            query='{app="cyclops-ui", source="cyclops"}',
+            since_seconds=since_seconds,
+            limit=limit,
+        )
+    except LokiError as exc:
+        cyclops.error("cyclops_ui.self_events", exception=exc, route="/_self/events")
+        return jsonify({"error": "loki_query_failed", "detail": str(exc)}), 502
+    return jsonify(
+        {
+            "since_seconds": since_seconds,
+            "limit": limit,
+            "count": len(events),
+            "events": events,
+        }
+    ), 200
+
+
 @app.get("/api/dev/errors")
-def api_errors() -> "tuple[dict, int]":
+def api_errors() -> tuple[Any, int]:
     """Recent error/critical events. Query params:
     - app:    filter by app label
     - since:  duration like '1h', '30m', '5m' (default 1h)
@@ -136,11 +270,11 @@ def api_errors() -> "tuple[dict, int]":
 
     try:
         events = query_range(
-            LOKI_URL, query=query, since_seconds=since_seconds, limit=limit
+            CONFIG.loki_url, query=query, since_seconds=since_seconds, limit=limit
         )
     except LokiError as exc:
         cyclops.error("cyclops_ui.api.errors", exception=exc, route="/api/dev/errors")
-        return {"error": "loki_query_failed", "detail": str(exc)}, 502
+        return jsonify({"error": "loki_query_failed", "detail": str(exc)}), 502
 
     cyclops.event(
         "cyclops_ui.api.errors_queried",
@@ -148,17 +282,19 @@ def api_errors() -> "tuple[dict, int]":
         since_seconds=since_seconds,
         result_count=len(events),
     )
-    return {
-        "query": query,
-        "since_seconds": since_seconds,
-        "limit": limit,
-        "count": len(events),
-        "events": events,
-    }, 200
+    return jsonify(
+        {
+            "query": query,
+            "since_seconds": since_seconds,
+            "limit": limit,
+            "count": len(events),
+            "events": events,
+        }
+    ), 200
 
 
 @app.get("/api/dev/events")
-def api_events() -> "tuple[dict, int]":
+def api_events() -> tuple[Any, int]:
     """Generic event search. Query params:
     - app:        filter by app label
     - level:      filter by level label (info|warning|error|critical|debug)
@@ -185,11 +321,11 @@ def api_events() -> "tuple[dict, int]":
 
     try:
         events = query_range(
-            LOKI_URL, query=query, since_seconds=since_seconds, limit=limit
+            CONFIG.loki_url, query=query, since_seconds=since_seconds, limit=limit
         )
     except LokiError as exc:
         cyclops.error("cyclops_ui.api.events", exception=exc, route="/api/dev/events")
-        return {"error": "loki_query_failed", "detail": str(exc)}, 502
+        return jsonify({"error": "loki_query_failed", "detail": str(exc)}), 502
 
     cyclops.event(
         "cyclops_ui.api.events_queried",
@@ -199,41 +335,52 @@ def api_events() -> "tuple[dict, int]":
         since_seconds=since_seconds,
         result_count=len(events),
     )
-    return {
-        "query": query,
-        "since_seconds": since_seconds,
-        "limit": limit,
-        "count": len(events),
-        "events": events,
-    }, 200
+    return jsonify(
+        {
+            "query": query,
+            "since_seconds": since_seconds,
+            "limit": limit,
+            "count": len(events),
+            "events": events,
+        }
+    ), 200
 
 
-@app.get("/")
-def landing() -> "tuple[dict, int]":
-    """Placeholder root page. Phase 4 will replace this with the branded
-    Flask landing + app picker; for now it just points operators at
-    Grafana and the corkboard."""
+# --- Helpers --------------------------------------------------------------
+
+
+def _event_for_table(ev: dict[str, Any]) -> dict[str, Any]:
+    labels = ev.get("_labels") or {}
+    ts_short = ""
+    ts_iso = ev.get("timestamp")
+    if isinstance(ts_iso, str):
+        try:
+            dt = datetime.fromisoformat(ts_iso.replace("Z", "+00:00"))
+            ts_short = dt.astimezone(UTC).strftime("%H:%M:%S")
+        except ValueError:
+            ts_short = ts_iso[-8:] if len(ts_iso) >= 8 else ts_iso
+    elif ev.get("_loki_timestamp_ns"):
+        try:
+            ns = int(ev["_loki_timestamp_ns"])
+            dt = datetime.fromtimestamp(ns / 1_000_000_000, tz=UTC)
+            ts_short = dt.strftime("%H:%M:%S")
+        except (ValueError, TypeError):
+            pass
+    msg = ev.get("message") or ev.get("error_class") or ""
     return {
-        "service": "cyclops-ui",
-        "version": cyclops_ui_version,
-        "environment": ENVIRONMENT,
-        "api": {
-            "errors": "/api/dev/errors?app=&since=1h&limit=100",
-            "events": "/api/dev/events?app=&level=&event_type=&since=1h&limit=100",
-        },
-        "links": {
-            "grafana": "/grafana/",
-            "corkboard": "/corkboard/",
-        },
-        "note": "Full Phase 4 landing page (per DESIGN.md §10) is not yet built.",
-    }, 200
+        "timestamp_short": ts_short,
+        "app": ev.get("app") or labels.get("app") or "",
+        "level": ev.get("level") or labels.get("level") or "",
+        "event_type": ev.get("event_type") or "",
+        "message": str(msg)[:200],
+    }
 
 
 # --- Lifespan: app.started / app.stopped ----------------------------------
 # Flask doesn't natively have lifespan hooks like FastAPI; emit on import
 # (app.started) and on the SIGTERM handler.
 
-cyclops.app_started(loki_url=LOKI_URL)
+cyclops.app_started(loki_url=CONFIG.loki_url)
 
 
 def _on_shutdown(*_args: object) -> None:
