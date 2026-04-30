@@ -1,0 +1,171 @@
+{
+  "uid": "scout-llm-usage",
+  "title": "Scout — LLM Usage",
+  "tags": ["scout", "llm", "anthropic"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Anthropic calls (24h)",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Failures (24h)",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" | outcome=\"failure\" [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 5}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Input tokens (24h)",
+      "description": "Sum of input_tokens across all anthropic.messages.create calls.",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(sum_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" | unwrap input_tokens [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Output tokens (24h)",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(sum_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" | unwrap output_tokens [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Calls per hour by model",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum by (model) (count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" [1h]))",
+        "legendFormat": "{{ model }}"
+      }],
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "bars", "stacking": {"mode": "normal"}}}}
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Tokens per hour (input vs output vs cache)",
+      "description": "Stacked: input + output tokens, plus cache_read (90% discount) and cache_creation (25% premium) for visibility into prompt caching effectiveness.",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(sum_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" | unwrap input_tokens [1h]))",
+          "legendFormat": "input"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(sum_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" | unwrap output_tokens [1h]))",
+          "legendFormat": "output"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(sum_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" | unwrap cache_read_input_tokens [1h]))",
+          "legendFormat": "cache_read"
+        },
+        {
+          "refId": "D",
+          "expr": "sum(sum_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" | unwrap cache_creation_input_tokens [1h]))",
+          "legendFormat": "cache_creation"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "line", "fillOpacity": 30, "stacking": {"mode": "normal"}}}}
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "p95 latency by model (ms)",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "quantile_over_time(0.95, {app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" | unwrap duration_ms [10m]) by (model)",
+        "legendFormat": "{{ model }}"
+      }],
+      "fieldConfig": {"defaults": {"unit": "ms"}}
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Calls by component (24h)",
+      "description": "Where are LLM calls coming from? web (admin/chat) vs cron.autogen (nightly briefs) vs others.",
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "topk(10, sum by (component, model) (count_over_time({app=\"scout\"} | json | event_type=\"api.call\" | target=\"anthropic.messages.create\" [24h])))",
+        "instant": true,
+        "format": "table"
+      }]
+    }
+  ]
+}
