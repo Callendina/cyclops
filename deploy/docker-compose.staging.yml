@@ -37,3 +37,8 @@ services:
       GF_AUTH_PROXY_HEADERS: "Email:X-Gatekeeper-User"
       # Disable anonymous now that auth.proxy is doing the work.
       GF_AUTH_ANONYMOUS_ENABLED: "false"
+
+  cyclops-ui:
+    environment:
+      LOKI_URL: "http://loki:3100"
+      CYCLOPS_UI_ENV: "staging"

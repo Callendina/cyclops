@@ -1,0 +1,34 @@
+# Gatekeeper app config fragment for cyclops-staging.
+#
+# Deploy to /home/jonnosan/gatekeeper/config.d/cyclops-staging.yaml on
+# the staging Linode (the cyclops stack's deploy step copies this for
+# you; manual: scp + sudo systemctl restart gatekeeper).
+#
+# Registers cyclops-staging.callendina.com as a gatekeeper "app" so the
+# normal forward_auth flow (with API-key fallback) applies. Browser
+# users sign in via the standard OAuth/magic-link/SMS flows; programmatic
+# callers (e.g. Claude sessions querying recent errors) supply
+# `X-API-Key: <gatekeeper-issued-key>`.
+
+name: "Cyclops (Staging)"
+domains:
+  - cyclops-staging.callendina.com
+protected_paths:
+  - /*
+# Tight allowlist — the cyclops stack is operator-internal.
+allowed_emails:
+  - jonno@callendina.com
+  - jonnosan@gmail.com
+  - jonno.downes@callendina.com
+roles:
+  - admin
+default_role: admin
+api_access:
+  mode: key_required
+  # Programmatic paths require an X-API-Key (corkboard dev API + the
+  # cyclops-ui dev API once that lands). Browser paths (/grafana/*,
+  # /corkboard/, /, etc.) accept session cookies normally.
+  paths:
+    - /corkboard/api/dev/*
+    - /api/dev/*
+  registered_key_duration_days: 365

@@ -62,6 +62,20 @@ services:
       - loki
     restart: unless-stopped
 
+  cyclops-ui:
+    build:
+      context: ..
+      dockerfile: deploy/cyclops-ui.Dockerfile
+    image: cyclops-ui:latest
+    container_name: cyclops-ui
+    ports:
+      - "127.0.0.1:9300:8000"
+    environment:
+      LOKI_URL: "http://loki:3100"
+    depends_on:
+      - loki
+    restart: unless-stopped
+
 volumes:
   loki-data:
   grafana-data:
