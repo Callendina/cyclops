@@ -250,6 +250,21 @@ def auth() -> str:
     )
 
 
+@app.get("/heartbeats")
+def heartbeats() -> str:
+    grafana_url = _grafana_url(
+        "cyclops-health",
+        params={"from": "now-1h", "to": "now"},
+    )
+    cyclops.event("cyclops_ui.dashboard.viewed", dashboard="health")
+    return render_template(
+        "iframe.html",
+        title="health",
+        grafana_url=grafana_url,
+        events_url="/events?event_type=heartbeat&since=15m",
+    )
+
+
 @app.get("/events")
 def events_search() -> str:
     """Filterable events page with copy-json affordance per row."""
@@ -466,11 +481,42 @@ def _event_for_table(ev: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-# --- Lifespan: app.started / app.stopped ----------------------------------
+# --- Lifespan: app.started / app.stopped + heartbeat ---------------------
 # Flask doesn't natively have lifespan hooks like FastAPI; emit on import
-# (app.started) and on the SIGTERM handler.
+# (app.started) and on the SIGTERM handler. The heartbeat thread is the
+# canary for fleet absence-detection (DESIGN.md §5).
 
 cyclops.app_started(loki_url=CONFIG.loki_url)
+
+
+_HEARTBEAT_INTERVAL_SECONDS = 60.0
+
+
+def _emit_heartbeat() -> None:
+    # Never let a heartbeat failure crash the server. Cyclops emission is
+    # fire-and-forget by design (DESIGN.md §0).
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        cyclops.heartbeat(
+            next_heartbeat_in_seconds=_HEARTBEAT_INTERVAL_SECONDS,
+            worker_pid=os.getpid(),
+        )
+    _schedule_heartbeat()
+
+
+def _schedule_heartbeat() -> None:
+    import threading
+
+    t = threading.Timer(_HEARTBEAT_INTERVAL_SECONDS, _emit_heartbeat)
+    t.daemon = True
+    t.start()
+
+
+# Skip the heartbeat thread when running tests — pytest imports the
+# module and we don't want a dangling Timer firing during the suite.
+if os.environ.get("CYCLOPS_UI_DISABLE_HEARTBEAT") != "1":
+    _schedule_heartbeat()
 
 
 def _on_shutdown(*_args: object) -> None:

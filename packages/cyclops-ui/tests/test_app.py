@@ -25,6 +25,9 @@ def client():
     os.environ.setdefault("ENVIRONMENT", "dev")
     os.environ.setdefault("GRAFANA_PUBLIC_URL", "http://localhost:3000/grafana")
     os.environ.setdefault("KNOWN_APPS", "vispay,scout,gatekeeper,corkboard,cyclops-ui")
+    # Don't fire the periodic heartbeat Timer during tests — pytest imports
+    # the module and a dangling Timer would emit during the suite.
+    os.environ.setdefault("CYCLOPS_UI_DISABLE_HEARTBEAT", "1")
 
     from cyclops_ui.app import app
 
@@ -146,6 +149,16 @@ def test_auth_iframe(client, monkeypatch) -> None:
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert "cyclops-auth" in body
+
+
+def test_heartbeats_iframe(client, monkeypatch) -> None:
+    from cyclops_ui import app as app_module
+
+    monkeypatch.setattr(app_module.cyclops, "event", lambda *a, **kw: None)
+    resp = client.get("/heartbeats")
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "cyclops-health" in body
 
 
 def test_events_search_renders(client, monkeypatch) -> None:

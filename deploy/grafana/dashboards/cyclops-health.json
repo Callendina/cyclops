@@ -1,0 +1,207 @@
+{
+  "uid": "cyclops-health",
+  "title": "Cyclops — Health",
+  "tags": ["cyclops", "health"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Apps emitting heartbeats (5m)",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(sum by (app) (count_over_time({source=\"cyclops\"} | json | event_type=\"heartbeat\" [5m])))"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "green", "value": 2}
+            ]
+          },
+          "color": {"mode": "thresholds"}
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Apps emitting any event (5m)",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(sum by (app) (count_over_time({source=\"cyclops\"}[5m])))"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "green", "value": 3}
+            ]
+          },
+          "color": {"mode": "thresholds"}
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Heartbeat rate (per min)",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate({source=\"cyclops\"} | json | event_type=\"heartbeat\" [5m])) * 60"
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 1}}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Cron starts (24h)",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({source=\"cyclops\"} | json | event_type=\"cron.started\" [24h]))"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Heartbeats per app",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (app) (rate({source=\"cyclops\"} | json | event_type=\"heartbeat\" [$__interval]))",
+          "legendFormat": "{{app}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Any event per app",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (app) (rate({source=\"cyclops\"}[$__interval]))",
+          "legendFormat": "{{app}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15
+          }
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Cron tasks (24h)",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(50, sum by (app, task_name) (count_over_time({source=\"cyclops\"} | json | event_type=\"cron.started\" [24h])))",
+          "queryType": "instant",
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {"Time": true},
+            "renameByName": {"Value #A": "starts"}
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "logs",
+      "title": "Recent heartbeats",
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{source=\"cyclops\"} | json | event_type=\"heartbeat\" | line_format \"[{{ .app }}] {{ .component }} pid={{ .worker_pid }} next={{ .next_heartbeat_in_seconds }}s\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "wrapLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}
