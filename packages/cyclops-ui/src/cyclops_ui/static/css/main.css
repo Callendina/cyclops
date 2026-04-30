@@ -55,6 +55,10 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 
 .content { padding: 20px; }
 .page-iframe .content { padding: 0; height: calc(100vh - 44px); display: flex; flex-direction: column; }
+.page-per-app .content { padding: 0; }
+.page-per-app .grafana-frame.per-app { height: 70vh; min-height: 540px; display: block; }
+.per-app-events { padding: 18px 20px 24px; }
+.per-app-events h2 { margin-top: 0; }
 
 h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
 .section-link { font-size: 11px; font-weight: 500; margin-left: 10px; text-transform: none; letter-spacing: normal; }

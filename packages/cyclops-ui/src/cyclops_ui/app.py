@@ -176,16 +176,32 @@ def per_app(app_name: str) -> str:
             "to": "now",
         },
     )
+    rows: list[dict[str, Any]] = []
+    events_error: str | None = None
+    try:
+        raw = query_range(
+            CONFIG.loki_url,
+            query=f'{{app="{app_name}", source="cyclops"}}',
+            since_seconds=3600,
+            limit=100,
+        )
+        rows = [_event_for_table(ev) for ev in raw]
+    except LokiError as exc:
+        events_error = f"loki query failed: {exc}"
+        cyclops.error("cyclops_ui.per_app.events", exception=exc, route="/app")
+
     cyclops.event(
         "cyclops_ui.dashboard.viewed",
         dashboard="per-app",
         app_filter=app_name,
     )
     return render_template(
-        "iframe.html",
+        "per_app.html",
         title=f"{app_name}",
         grafana_url=grafana_url,
         events_url=f"/events?app={app_name}&since=24h",
+        events=rows,
+        events_error=events_error,
     )
 
 

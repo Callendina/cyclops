@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — cyclops{% endblock %}
+{% block body_class %}page-per-app{% endblock %}
+{% block content %}
+<div class="iframe-bar">
+  <h2>{{ title }}</h2>
+  <div class="iframe-bar-links">
+    <a class="iframe-link" href="{{ events_url }}">filter / search →</a>
+    <a class="iframe-link" href="{{ grafana_url }}" target="_blank" rel="noopener">open in grafana ↗</a>
+  </div>
+</div>
+<iframe class="grafana-frame per-app" src="{{ grafana_url }}" title="{{ title }}"></iframe>
+<section class="per-app-events">
+  <h2>recent events ({{ events|length }}, last 1h) <a class="section-link" href="{{ events_url }}">filter / search →</a></h2>
+  {% set empty_msg = 'no events for this app in the last hour.' %}
+  {% include "_events_table.html" %}
+</section>
+{% endblock %}

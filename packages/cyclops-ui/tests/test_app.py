@@ -80,12 +80,25 @@ def test_landing_event_expander(client, monkeypatch) -> None:
 def test_per_app_known(client, monkeypatch) -> None:
     from cyclops_ui import app as app_module
 
+    fake_event = {
+        "app": "vispay",
+        "level": "info",
+        "event_type": "vispay.tx.completed",
+        "message": "ok",
+        "timestamp": "2026-04-30T17:00:00Z",
+        "_loki_timestamp_ns": "1777520400000000000",
+        "_labels": {"app": "vispay"},
+    }
+    monkeypatch.setattr(app_module, "query_range", lambda *a, **kw: [fake_event])
     monkeypatch.setattr(app_module.cyclops, "event", lambda *a, **kw: None)
     resp = client.get("/app/vispay")
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert "var-app=vispay" in body
     assert "cyclops-per-app" in body
+    # native events table renders below the iframe
+    assert "vispay.tx.completed" in body
+    assert "copy json" in body.lower()
 
 
 def test_per_app_unknown_404(client) -> None:
