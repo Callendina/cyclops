@@ -56,10 +56,36 @@ Everything else (`request_id`, `user_id`, `workflow_id`, `http_status_code`, `ou
 
 Pinned tags so dev and staging match. Bump deliberately, in lockstep with any config changes the new version requires.
 
+## Staging (Linode)
+
+The staging deployment runs the same stack but reads from `journald`
+instead of file tails — gatekeeper and corkboard log via systemd, and
+vispay's docker-compose uses the `journald` log driver, so all three
+land in the same place.
+
+```sh
+docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+```
+
+Differences vs dev (encoded in `docker-compose.staging.yml`):
+
+- Alloy uses `alloy/staging.alloy` (journald source) and bind-mounts
+  `/var/log/journal`, `/run/log/journal`, `/etc/machine-id` read-only.
+- Alloy runs with GID 101 (`systemd-journal`) so it can read the
+  journal.
+- Grafana serves under `/grafana` (subpath) and trusts `X-Gatekeeper-User`
+  via `auth.proxy`. Caddy in front does the actual auth.
+
+The Caddy block on the Linode adds a `handle /grafana/*` that
+`forward_auth`s to Gatekeeper as system-admin, then `reverse_proxy`s
+to grafana:3000. Loki and Alloy stay internal to the cyclops Docker
+network.
+
 ## What this isn't yet
 
-- **Not behind Gatekeeper**: Grafana is wide open at `localhost:3000` for dev. The staging deployment (Phase 5) replaces `auth.anonymous` with `auth.proxy` reading `X-Gatekeeper-User`.
-- **Not provisioning dashboards yet**: Phase 3 lands the per-app, fleet, errors, auth, and Caddy dashboards.
-- **Not pulling from Docker socket / journald**: that's a Linode concern (Phase 5). The dev path is file-tail, which mirrors the bare-metal-app deployment shape.
+- **No provisioned dashboards yet**: Phase 3 lands the per-app, fleet,
+  errors, auth, and Caddy dashboards. Until then, use Grafana Explore.
+- **Stack runs on the same Linode as the apps**: that's deliberate at
+  this scale (DESIGN.md §11). Production scale would split.
 
 See [`../DESIGN.md`](../DESIGN.md) §7–§9 for the design rationale.

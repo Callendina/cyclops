@@ -1,0 +1,39 @@
+# Staging override for the cyclops stack.
+#
+# Layered on top of docker-compose.yml:
+#   docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+#
+# Differences vs local-dev:
+# - Alloy switches to staging.alloy (journald source, not file-tail).
+# - Alloy gets read-only bind-mounts for the host's journal + machine-id.
+# - Grafana gets staging-specific env vars: subpath serving and trust
+#   for the X-Gatekeeper-User header injected by Caddy. (Caddy itself
+#   does the actual auth; Grafana just trusts the resulting header.)
+
+services:
+  alloy:
+    volumes:
+      # Override the local-dev file-tail mount — staging uses journald.
+      - ./alloy/staging.alloy:/etc/alloy/config.alloy:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    # Alloy needs to be in the systemd-journal group to read journald.
+    # On Debian/Ubuntu that's GID 101.
+    user: "0:101"
+
+  grafana:
+    environment:
+      # Subpath serving so Caddy can route /grafana/* to grafana:3000.
+      GF_SERVER_ROOT_URL: "https://cyclops-staging.callendina.com/grafana"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      # Auth proxy: trust X-Gatekeeper-User as the authenticated user.
+      # Caddy validates the user via Gatekeeper's forward_auth before
+      # the request reaches Grafana, so trusting the header here is safe.
+      GF_AUTH_PROXY_ENABLED: "true"
+      GF_AUTH_PROXY_HEADER_NAME: "X-Gatekeeper-User"
+      GF_AUTH_PROXY_HEADER_PROPERTY: "username"
+      GF_AUTH_PROXY_AUTO_SIGN_UP: "true"
+      GF_AUTH_PROXY_HEADERS: "Email:X-Gatekeeper-User"
+      # Disable anonymous now that auth.proxy is doing the work.
+      GF_AUTH_ANONYMOUS_ENABLED: "false"

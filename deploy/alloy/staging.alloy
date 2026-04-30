@@ -1,0 +1,97 @@
+// Alloy config for the staging Linode deployment.
+//
+// On the Linode, every cyclops-instrumented app's stdout lands in journald:
+// - gatekeeper.service (systemd)        -> _SYSTEMD_UNIT=gatekeeper.service
+// - corkboard.service  (systemd)        -> _SYSTEMD_UNIT=corkboard.service
+// - vispay-w[1-4]      (Docker journald driver) -> CONTAINER_NAME=vispay-w*
+//
+// Reading journald gives us a single uniform input path. Each line that
+// parses as cyclops JSON (presence of `cyclops_version`) gets the rich
+// label set; everything else is labeled source="app_stdout" so it can
+// still be queried, just without typed fields.
+//
+// Compared to deploy/alloy/config.alloy (file-tail for local dev), the
+// only architectural difference is the source — the loki.process /
+// loki.write blocks are identical.
+
+logging {
+	level  = "warn"
+	format = "json"
+}
+
+// Promote selected journald metadata to log labels (low-cardinality only).
+loki.relabel "journal" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__journal__systemd_unit"]
+		target_label  = "systemd_unit"
+	}
+
+	rule {
+		source_labels = ["__journal_container_name"]
+		target_label  = "container_name"
+	}
+}
+
+// Limit journald ingestion to services we actually want in Loki.
+// "+" between matchers is AND; we use "|" pseudo-syntax via separate
+// matchers — Alloy treats the matches string as the journalctl --match
+// argument, where each match is OR'd unless +AND is used.
+loki.source.journal "linode" {
+	max_age       = "12h"
+	path          = "/var/log/journal"
+	relabel_rules = loki.relabel.journal.rules
+	matches       = "_SYSTEMD_UNIT=gatekeeper.service _SYSTEMD_UNIT=corkboard.service _SYSTEMD_UNIT=docker.service"
+	labels = {
+		job = "journald",
+	}
+	forward_to = [loki.process.cyclops.receiver]
+}
+
+loki.process "cyclops" {
+	// Drop blank lines.
+	stage.drop {
+		expression = "^\\s*$"
+	}
+
+	// Parse cyclops fields if the line is JSON. Non-JSON lines (e.g.
+	// uvicorn INFO output, raw print() statements) survive the stage
+	// with empty extracted fields.
+	stage.json {
+		expressions = {
+			app             = "app",
+			env             = "env",
+			host            = "host",
+			component       = "component",
+			level           = "level",
+			cyclops_version = "cyclops_version",
+		}
+	}
+
+	// Source label: cyclops events have cyclops_version, anything else
+	// is raw app stdout.
+	stage.template {
+		source   = "source"
+		template = "{{ if .cyclops_version }}cyclops{{ else }}app_stdout{{ end }}"
+	}
+
+	stage.labels {
+		values = {
+			app       = "",
+			env       = "",
+			host      = "",
+			component = "",
+			level     = "",
+			source    = "",
+		}
+	}
+
+	forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}
