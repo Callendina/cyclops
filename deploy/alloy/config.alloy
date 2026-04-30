@@ -1,0 +1,76 @@
+// Alloy config for the Cyclops dev/staging stack.
+//
+// Dev path: tail JSON-line files written by apps redirecting their stdout
+// to ./logs/<app>/<component>.jsonl on the host. The host dir is bind-
+// mounted into this container at /var/log/cyclops.
+//
+// Source detection (DESIGN.md §7): an event is "cyclops" iff its parsed
+// JSON includes a `cyclops_version` field. Otherwise it's app_stdout.
+//
+// Labels promoted (low-cardinality only): app, env, host, component,
+// level, source. High-cardinality fields (request_id, user_id, workflow_id,
+// http_status_code) stay in the log body and are queried via `| json | …`.
+
+logging {
+	level  = "warn"
+	format = "json"
+}
+
+local.file_match "cyclops_files" {
+	path_targets = [
+		{__path__ = "/var/log/cyclops/**/*.jsonl"},
+	]
+}
+
+loki.source.file "cyclops_files" {
+	targets    = local.file_match.cyclops_files.targets
+	forward_to = [loki.process.cyclops.receiver]
+}
+
+loki.process "cyclops" {
+	// Drop blank lines before parsing (apps occasionally emit one).
+	stage.drop {
+		expression = "^\\s*$"
+	}
+
+	// Parse the JSON body, extracting the fields we want as labels or for
+	// source-detection. Other JSON fields stay in the log body.
+	stage.json {
+		expressions = {
+			app             = "app",
+			env             = "env",
+			host            = "host",
+			component       = "component",
+			level           = "level",
+			cyclops_version = "cyclops_version",
+		}
+	}
+
+	// Source label: cyclops events have cyclops_version, anything else is
+	// raw app stdout (for now; DESIGN.md §7 anticipates caddy/system later).
+	stage.template {
+		source   = "source"
+		template = "{{ if .cyclops_version }}cyclops{{ else }}app_stdout{{ end }}"
+	}
+
+	// Promote to labels. Empty values are kept off the label set by the
+	// labels stage's contract — undefined fields don't become "" labels.
+	stage.labels {
+		values = {
+			app       = "",
+			env       = "",
+			host      = "",
+			component = "",
+			level     = "",
+			source    = "",
+		}
+	}
+
+	forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}

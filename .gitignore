@@ -35,3 +35,6 @@ htmlcov/
 
 # Claude Code project-local settings
 .claude/settings.local.json
+
+# Local-dev log shipping bind-mount (Phase 2)
+deploy/logs/

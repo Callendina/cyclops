@@ -1,0 +1,67 @@
+# Cyclops observability stack.
+#
+# Dev: spin up locally with `docker-compose up -d` from this directory.
+#   - Loki listens on :3100 (HTTP API).
+#   - Grafana listens on :3000 (anonymous editor access; no auth in dev).
+#   - Alloy tails ./logs/**/*.jsonl on the host and ships to Loki.
+#
+# To feed it events from a local cyclops-instrumented app, redirect the
+# app's stdout into ./logs/<app>/<component>.jsonl, e.g.:
+#
+#   mkdir -p logs/vispay
+#   cd ../../vispay && .venv/bin/uvicorn app:app --port 18888 \
+#       > /Users/jonno/src/cyclops/deploy/logs/vispay/web.jsonl 2>/dev/null &
+#
+# For staging/prod (Phase 5), this same compose runs on the Linode with
+# a real path layout (`/var/log/cyclops/**`) and Grafana behind Gatekeeper
+# via auth.proxy.
+
+name: cyclops
+
+services:
+  loki:
+    image: grafana/loki:3.4.1
+    container_name: cyclops-loki
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./loki/config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.6.1
+    container_name: cyclops-grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.7.5
+    container_name: cyclops-alloy
+    ports:
+      - "127.0.0.1:12345:12345"
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./logs:/var/log/cyclops:ro
+      - alloy-data:/var/lib/alloy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+volumes:
+  loki-data:
+  grafana-data:
+  alloy-data:
