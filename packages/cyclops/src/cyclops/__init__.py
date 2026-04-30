@@ -1,15 +1,21 @@
 """Cyclops — structured event emission for the Callendina app fleet.
 
-Public API (so far):
+Public API:
 
-- :data:`__version__` — package version
+- :func:`event` — free-form event emission
+- :func:`error` — exception-aware error event
+- :func:`request_received`, :func:`request_completed` — request lifecycle
+- :func:`api_call` — outbound API call
+- :func:`heartbeat` — periodic alive-ping
+- :func:`app_started`, :func:`app_stopped` — process lifecycle
+- :func:`cron_started`, :func:`cron_completed`, :func:`cron` — cron lifecycle
 - :func:`init` — library-level configuration (extra forbidden field names)
 - :mod:`cyclops.context` — per-request / per-task field binding
 - :func:`redact_pan`, :func:`redact_email`, :func:`redact_token` — masking helpers
 - :class:`~cyclops.exceptions.CyclopsError` and subclasses
+- :data:`__version__`
 
-The free-form ``event()`` and typed helpers (``cyclops.error``, lifecycle
-helpers) land in #13. See DESIGN.md §1–§3.
+See DESIGN.md §1–§3 for the full design.
 """
 
 from __future__ import annotations
@@ -19,6 +25,20 @@ from collections.abc import Iterable
 __version__ = "0.1.0"
 
 from cyclops import context
+from cyclops._helpers import (
+    VALID_OUTCOMES,
+    api_call,
+    app_started,
+    app_stopped,
+    cron,
+    cron_completed,
+    cron_started,
+    error,
+    event,
+    heartbeat,
+    request_completed,
+    request_received,
+)
 from cyclops.exceptions import (
     CyclopsConfigError,
     CyclopsError,
@@ -46,14 +66,26 @@ def init(*, extra_forbidden_fields: Iterable[str] | None = None) -> None:
 
 
 __all__ = [
+    "VALID_OUTCOMES",
     "CyclopsConfigError",
     "CyclopsError",
     "CyclopsForbiddenFieldError",
     "CyclopsValidationError",
     "__version__",
+    "api_call",
+    "app_started",
+    "app_stopped",
     "context",
+    "cron",
+    "cron_completed",
+    "cron_started",
+    "error",
+    "event",
+    "heartbeat",
     "init",
     "redact_email",
     "redact_pan",
     "redact_token",
+    "request_completed",
+    "request_received",
 ]
