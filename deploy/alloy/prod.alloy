@@ -1,0 +1,83 @@
+// Alloy config for the prod Linode deployment.
+//
+// Same shape as staging.alloy, but the prod Linode currently runs vispay
+// as bare-metal systemd units (vispay-w[1-4].service). Once vispay is
+// Dockerized on prod, the docker.service matcher (already present) will
+// also capture its container stdout, so this config supports both modes.
+//
+// Apps emitted to journald on prod:
+// - gatekeeper.service       (systemd, cyclops-instrumented)
+// - corkboard.service        (systemd, cyclops-instrumented)
+// - vispay-w[1-4].service    (systemd bare-metal, will become docker post-cutover)
+// - docker.service           (every Docker container's stdout once Dockerized)
+
+logging {
+	level  = "warn"
+	format = "json"
+}
+
+loki.relabel "journal" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__journal__systemd_unit"]
+		target_label  = "systemd_unit"
+	}
+
+	rule {
+		source_labels = ["__journal_container_name"]
+		target_label  = "container_name"
+	}
+}
+
+loki.source.journal "linode" {
+	max_age       = "12h"
+	path          = "/var/log/journal"
+	relabel_rules = loki.relabel.journal.rules
+	matches       = "_SYSTEMD_UNIT=gatekeeper.service _SYSTEMD_UNIT=corkboard.service _SYSTEMD_UNIT=vispay-w1.service _SYSTEMD_UNIT=vispay-w2.service _SYSTEMD_UNIT=vispay-w3.service _SYSTEMD_UNIT=vispay-w4.service _SYSTEMD_UNIT=docker.service"
+	labels = {
+		job = "journald",
+	}
+	forward_to = [loki.process.cyclops.receiver]
+}
+
+loki.process "cyclops" {
+	stage.drop {
+		expression = "^\\s*$"
+	}
+
+	stage.json {
+		expressions = {
+			app             = "app",
+			env             = "env",
+			host            = "host",
+			component       = "component",
+			level           = "level",
+			cyclops_version = "cyclops_version",
+		}
+	}
+
+	stage.template {
+		source   = "source"
+		template = "{{ if .cyclops_version }}cyclops{{ else }}app_stdout{{ end }}"
+	}
+
+	stage.labels {
+		values = {
+			app       = "",
+			env       = "",
+			host      = "",
+			component = "",
+			level     = "",
+			source    = "",
+		}
+	}
+
+	forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}

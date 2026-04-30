@@ -1,0 +1,31 @@
+# Gatekeeper app config fragment for cyclops (prod).
+#
+# Deploy to /home/jonnosan/gatekeeper/config.d/cyclops-prod.yaml on
+# the prod Linode (vispay-prod.callendina.com). Restart gatekeeper
+# after copying.
+#
+# Registers cyclops.callendina.com as a gatekeeper "app" so the normal
+# forward_auth flow (with API-key fallback) applies. Browser users sign
+# in via standard OAuth/magic-link/SMS; programmatic callers supply
+# `X-API-Key: <gatekeeper-issued-key>`.
+
+name: "Cyclops"
+domains:
+  - cyclops.callendina.com
+protected_paths:
+  - /*
+# Tight allowlist — the cyclops stack is operator-internal.
+allowed_emails:
+  - jonno@callendina.com
+  - jonnosan@gmail.com
+  - jonno.downes@callendina.com
+roles:
+  - admin
+default_role: admin
+api_access:
+  mode: key_required
+  # Programmatic paths require an X-API-Key. Browser paths (/grafana/*,
+  # /, /events, /app/<x>, etc.) accept session cookies normally.
+  paths:
+    - /api/dev/*
+  registered_key_duration_days: 365

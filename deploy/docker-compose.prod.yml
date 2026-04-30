@@ -1,0 +1,49 @@
+# Prod override for the cyclops stack.
+#
+# Layered on top of docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Differences vs local-dev:
+# - Alloy switches to staging.alloy (journald source, not file-tail) — same
+#   pattern as the staging override since the prod Linode also uses journald.
+# - Alloy gets read-only bind-mounts for the host's journal + machine-id.
+# - Grafana gets prod-specific env: subpath serving and trust for the
+#   X-Gatekeeper-User header injected by Caddy.
+# - cyclops-ui runs with ENVIRONMENT=prod and points GRAFANA_PUBLIC_URL
+#   at the prod hostname.
+
+services:
+  alloy:
+    volumes:
+      # Override the local-dev file-tail mount — prod uses journald with a
+      # prod-specific matcher list that includes the bare-metal vispay-w*
+      # services until the Docker cutover lands.
+      - ./alloy/prod.alloy:/etc/alloy/config.alloy:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    # Alloy needs to be in the systemd-journal group to read journald.
+    # On Debian/Ubuntu that's GID 101.
+    user: "0:101"
+
+  grafana:
+    environment:
+      # Subpath serving so Caddy can route /grafana/* to grafana:3000.
+      GF_SERVER_ROOT_URL: "https://cyclops.callendina.com/grafana"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      # Auth proxy: trust X-Gatekeeper-User as the authenticated user.
+      GF_AUTH_PROXY_ENABLED: "true"
+      GF_AUTH_PROXY_HEADER_NAME: "X-Gatekeeper-User"
+      GF_AUTH_PROXY_HEADER_PROPERTY: "username"
+      GF_AUTH_PROXY_AUTO_SIGN_UP: "true"
+      GF_AUTH_PROXY_HEADERS: "Email:X-Gatekeeper-User"
+      # Disable anonymous now that auth.proxy is doing the work.
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+
+  cyclops-ui:
+    environment:
+      LOKI_URL: "http://loki:3100"
+      CYCLOPS_UI_ENV: "prod"
+      ENVIRONMENT: "prod"
+      GRAFANA_PUBLIC_URL: "https://cyclops.callendina.com/grafana"
+      KNOWN_APPS: "vispay,scout,gatekeeper,corkboard,cyclops-ui"
