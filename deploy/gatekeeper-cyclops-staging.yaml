@@ -32,3 +32,9 @@ api_access:
     - /corkboard/api/dev/*
     - /api/dev/*
   registered_key_duration_days: 365
+rate_limit:
+  # Bumped well above gatekeeper's 120/min default — Grafana iframes
+  # fan out into many concurrent panel queries, and signed-in admins
+  # are operator-internal so the abuse risk is low.
+  requests_per_minute: 600
+  authenticated_requests_per_minute: 3000
