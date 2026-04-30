@@ -72,6 +72,12 @@ services:
       - "127.0.0.1:9300:8000"
     environment:
       LOKI_URL: "http://loki:3100"
+    # Same journald-driver pattern as vispay so the host-side Alloy
+    # picks up cyclops-ui's stdout via the unified journald path.
+    logging:
+      driver: journald
+      options:
+        tag: "{{.Name}}"
     depends_on:
       - loki
     restart: unless-stopped
