@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
-from cyclops import _config, context
+from cyclops import _config, _forbidden, context
 
 _CYCLOPS_ENV_VARS: tuple[str, ...] = (
     "APP_NAME",
@@ -26,9 +26,11 @@ def _isolate_cyclops_state(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         monkeypatch.delenv(var, raising=False)
     _config._reset_for_tests()
     context._reset_for_tests()
+    _forbidden._reset_for_tests()
     yield
     _config._reset_for_tests()
     context._reset_for_tests()
+    _forbidden._reset_for_tests()
 
 
 @pytest.fixture

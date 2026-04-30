@@ -25,6 +25,7 @@ from typing import Any
 
 from cyclops import __version__
 from cyclops._config import _load_config
+from cyclops._forbidden import check_forbidden
 from cyclops._validation import _validate_event_type, _validate_level
 from cyclops.context import _CONTEXT_KEYS, snapshot
 from cyclops.exceptions import CyclopsValidationError
@@ -59,6 +60,9 @@ def _emit(event_type: str, level: str, fields: Mapping[str, Any]) -> None:
     """
     _validate_event_type(event_type)
     _validate_level(level)
+
+    # Forbidden-name check first — security wins over correctness.
+    check_forbidden(fields)
 
     overlap = set(fields.keys()) & _RESERVED_KEYS
     if overlap:
