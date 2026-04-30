@@ -163,7 +163,7 @@
           },
           {
             "matcher": {"id": "byName", "options": "debug"},
-            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "grey"}}]
+            "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": "#888888"}}]
           }
         ]
       },
