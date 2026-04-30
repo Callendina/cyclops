@@ -143,13 +143,41 @@
     {
       "id": 8,
       "type": "table",
-      "title": "Games refreshed per comp (24h)",
-      "description": "scout.match.refreshed events from BasketballGame.enrich_completed_game. One row per (competition_id, refresh) — same game refreshed twice in the window counts twice (sweep frequency).",
+      "title": "NBL1 East games refreshed (24h)",
+      "description": "scout.match.refreshed events for NBL1M (East Men) and NBL1W (East Women) — the only comps the local backfill targets. Same game refreshed twice in the window counts twice (sweep frequency).",
       "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
       "datasource": {"type": "loki", "uid": "cyclops-loki"},
       "targets": [{
         "refId": "A",
-        "expr": "sum by (competition_id) (count_over_time({app=\"scout\"} | json | event_type=\"scout.match.refreshed\" [24h]))",
+        "expr": "sum by (competition_id) (count_over_time({app=\"scout\"} | json | event_type=\"scout.match.refreshed\" | competition_id=~\"NBL1[MW]\" [24h]))",
+        "instant": true,
+        "format": "table"
+      }]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "NBL1 East refresh rate (7d)",
+      "description": "Daily count of scout.match.refreshed events, NBL1 East only. Trend line for backfill progress — should rise during active local backfill, plateau when caught up.",
+      "gridPos": {"x": 0, "y": 20, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum by (competition_id) (count_over_time({app=\"scout\"} | json | event_type=\"scout.match.refreshed\" | competition_id=~\"NBL1[MW]\" [1d]))",
+        "legendFormat": "{{ competition_id }}"
+      }],
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"drawStyle": "bars", "stacking": {"mode": "normal"}}}}
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Other comps refreshed (24h, non-East)",
+      "description": "Everything outside NBL1 East — mostly the prod sweep cron touching current-season YL / JPL / NBL1 East 2026 games as they progress. Background activity, not the backfill target.",
+      "gridPos": {"x": 12, "y": 20, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum by (competition_id) (count_over_time({app=\"scout\"} | json | event_type=\"scout.match.refreshed\" | competition_id!~\"NBL1[MW]\" [24h]))",
         "instant": true,
         "format": "table"
       }]
