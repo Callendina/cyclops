@@ -142,13 +142,17 @@
     },
     {
       "id": 8,
-      "type": "text",
-      "title": "Per-comp games refreshed (24h) — TODO",
+      "type": "table",
+      "title": "Games refreshed per comp (24h)",
+      "description": "scout.match.refreshed events from BasketballGame.enrich_completed_game. One row per (competition_id, refresh) — same game refreshed twice in the window counts twice (sweep frequency).",
       "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
-      "options": {
-        "mode": "markdown",
-        "content": "**Not yet wired.** This panel needs a `scout.match.refreshed` cyclops event emitted from `api/BasketballGame.py:enrich_completed_game()` carrying `competition_id`, `fq_match_id`, `pbp_action_count`, and `data_source`. Once shipped, replace this text panel with:\n\n```\nsum by (competition_id) (\n  count_over_time(\n    {app=\"scout\"} | json | event_type=\"scout.match.refreshed\" [24h]\n  )\n)\n```\n\nas a stat-table, sorted descending. v1 of this dashboard uses the CMS-call panels above as a proxy — top targets reveal which CMSs are being hit, which is one layer removed from \"games loaded\"."
-      }
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum by (competition_id) (count_over_time({app=\"scout\"} | json | event_type=\"scout.match.refreshed\" [24h]))",
+        "instant": true,
+        "format": "table"
+      }]
     }
   ]
 }
