@@ -1,0 +1,181 @@
+{
+  "uid": "scout-video-pipeline",
+  "title": "Scout — Video Pipeline",
+  "tags": ["scout", "video"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Heartbeats (last 15m)",
+      "description": "Extraction worker emits a heartbeat every 5 min when idle. Zero = stuck/down.",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\", component=\"extraction_worker\"} | json | event_type=\"heartbeat\" [15m]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Games extracted (24h)",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\", component=\"extraction_worker\"} | json | event_type=\"scout.scorebug.extraction_completed\" [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Games OCR-completed (24h)",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\", component=\"extraction_worker\"} | json | event_type=\"scout.scorebug.ocr_completed\" [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Worker errors (24h)",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "sum(count_over_time({app=\"scout\", component=\"extraction_worker\", level=~\"error|critical\"} [24h]))",
+        "instant": true
+      }],
+      "options": {
+        "graphMode": "area",
+        "colorMode": "value",
+        "reduceOptions": {"calcs": ["lastNotNull"]}
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "red", "value": 5}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Pipeline throughput (events / hour)",
+      "description": "Stacked: extraction_completed vs ocr_completed. Healthy pipeline tracks both lines together.",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({app=\"scout\", component=\"extraction_worker\"} | json | event_type=\"scout.scorebug.extraction_completed\" [1h]))",
+          "legendFormat": "extraction_completed"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(count_over_time({app=\"scout\", component=\"extraction_worker\"} | json | event_type=\"scout.scorebug.ocr_completed\" [1h]))",
+          "legendFormat": "ocr_completed"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Avg extraction duration (seconds)",
+      "description": "Per-game extract_one() duration. Spikes = slow downloads or stalled HLS segments.",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "avg_over_time({app=\"scout\", component=\"extraction_worker\"} | json | event_type=\"scout.scorebug.extraction_completed\" | unwrap duration_seconds [1h])",
+        "legendFormat": "extract"
+      },
+      {
+        "refId": "B",
+        "expr": "avg_over_time({app=\"scout\", component=\"extraction_worker\"} | json | event_type=\"scout.scorebug.ocr_completed\" | unwrap duration_seconds [1h])",
+        "legendFormat": "ocr"
+      }],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Errors by stage (last 24h)",
+      "description": "Where in the pipeline did failures happen? extraction / ocr / sync / db / db_retry / worker_main.",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "topk(20, sum by (stage) (count_over_time({app=\"scout\", component=\"extraction_worker\", level=~\"error|critical\"} | json [24h])))",
+        "instant": true,
+        "format": "table"
+      }]
+    },
+    {
+      "id": 8,
+      "type": "logs",
+      "title": "Recent worker errors",
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "loki", "uid": "cyclops-loki"},
+      "targets": [{
+        "refId": "A",
+        "expr": "{app=\"scout\", component=\"extraction_worker\", level=~\"error|critical\"} | json | line_format \"[{{ .stage }}] {{ .fq_match_id }} — {{ .error_type }}: {{ .error_message }}\""
+      }],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}
