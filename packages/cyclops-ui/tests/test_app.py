@@ -82,7 +82,7 @@ def test_landing_event_expander(client, monkeypatch) -> None:
     assert "card declined" in body
     # env tag rendered alongside the app name
     assert "(prod)" in body
-    assert "env-prod" in body
+    assert "app-env-prod" in body
 
 
 def test_per_app_known(client, monkeypatch) -> None:
