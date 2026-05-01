@@ -18,7 +18,7 @@
         <tr class="ev-row lvl-{{ ev.level or 'info' }}" data-row="{{ loop.index }}">
           <td class="caret">▸</td>
           <td class="t">{{ ev.timestamp_short }}</td>
-          <td class="a">{{ ev.app }}</td>
+          <td class="a">{{ ev.app }}{% if ev.env %} <span class="env-{{ ev.env }} app-env">({{ ev.env }})</span>{% endif %}</td>
           <td class="l">{{ ev.level or '' }}</td>
           <td class="e">{{ ev.event_type or '' }}</td>
           <td class="m">{{ ev.message or '' }}</td>

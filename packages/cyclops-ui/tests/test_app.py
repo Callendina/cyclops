@@ -56,17 +56,19 @@ def test_landing_renders(client, monkeypatch) -> None:
 
 
 def test_landing_event_expander(client, monkeypatch) -> None:
-    """When events are present, each row must have a copy-json affordance."""
+    """When events are present, each row must have a copy-json affordance
+    plus the env tag so prod and staging are visually distinguishable."""
     from cyclops_ui import app as app_module
 
     fake_event = {
         "app": "vispay",
+        "env": "prod",
         "level": "error",
         "event_type": "vispay.tx.failed",
         "message": "card declined",
         "timestamp": "2026-04-30T17:00:00Z",
         "_loki_timestamp_ns": "1777520400000000000",
-        "_labels": {"app": "vispay", "level": "error"},
+        "_labels": {"app": "vispay", "env": "prod", "level": "error"},
     }
     monkeypatch.setattr(app_module, "query_range", lambda *a, **kw: [fake_event])
     resp = client.get("/")
@@ -78,6 +80,9 @@ def test_landing_event_expander(client, monkeypatch) -> None:
     # Full event JSON is embedded so user can copy it
     assert "vispay.tx.failed" in body
     assert "card declined" in body
+    # env tag rendered alongside the app name
+    assert "(prod)" in body
+    assert "env-prod" in body
 
 
 def test_per_app_known(client, monkeypatch) -> None:

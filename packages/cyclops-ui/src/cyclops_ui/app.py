@@ -474,6 +474,7 @@ def _event_for_table(ev: dict[str, Any]) -> dict[str, Any]:
     return {
         "timestamp_short": ts_short,
         "app": ev.get("app") or labels.get("app") or "",
+        "env": ev.get("env") or labels.get("env") or "",
         "level": ev.get("level") or labels.get("level") or "",
         "event_type": ev.get("event_type") or "",
         "message": str(msg)[:200],
