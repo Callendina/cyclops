@@ -45,3 +45,32 @@ services:
       ENVIRONMENT: "staging"
       GRAFANA_PUBLIC_URL: "https://cyclops-staging.callendina.com/grafana"
       KNOWN_APPS: "vispay,scout,gatekeeper,corkboard,cyclops-ui"
+
+  # Secondary alloy: tails the host's journald, filters to scout-only
+  # events, and ships them via HTTPS to the PROD cyclops Loki at
+  # cyclops.callendina.com (auth via Gatekeeper API key). Scout's app
+  # containers live on this staging host for historical reasons but
+  # scout is a prod app — its events belong in prod cyclops alongside
+  # the other prod apps. See deploy/alloy/scout.alloy + scout #93.
+  scout-alloy:
+    image: grafana/alloy:v1.7.5
+    container_name: scout-alloy
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy/scout.alloy:/etc/alloy/config.alloy:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    user: "0:101"   # root + systemd-journal group, same as the primary alloy
+    env_file:
+      # Holds SCOUT_LOKI_API_KEY (Gatekeeper-issued). Mode 600 on host;
+      # never committed to git.
+      - ./scout-alloy.env
+    restart: unless-stopped
+    logging:
+      driver: journald
+      options:
+        tag: "{{.Name}}"

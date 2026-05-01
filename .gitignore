@@ -38,3 +38,7 @@ htmlcov/
 
 # Local-dev log shipping bind-mount (Phase 2)
 deploy/logs/
+
+# Service credentials for cross-host log shipping (scout #93). Holds
+# SCOUT_LOKI_API_KEY issued by Gatekeeper. Never commit.
+deploy/scout-alloy.env

@@ -1,0 +1,113 @@
+// Alloy config for the SECONDARY agent on the staging Linode that ships
+// scout's events to PROD cyclops (cyclops.callendina.com), not the local
+// staging Loki. Scout's app containers live on the staging Linode for
+// historical reasons but scout itself is a prod app, so its events
+// belong in prod cyclops alongside the other prod apps.
+//
+// Architecture:
+//   journald  ──►  scout-alloy (this config)  ──HTTPS──►  Caddy on prod
+//                                                       └► Gatekeeper (X-API-Key)
+//                                                       └► cyclops-loki (prod)
+//
+// Difference vs staging.alloy:
+//   - matches narrowed to docker.service only (we filter to scout in-process)
+//   - loki.process drops anything where app != "scout" so we don't ship
+//     vispay/corkboard/gatekeeper events to prod cyclops
+//   - loki.write points at https://cyclops.callendina.com/loki/api/v1/push
+//     with X-API-Key header from sys.env("SCOUT_LOKI_API_KEY")
+//
+// Why filter post-parse instead of via journald matches:
+//   Cron-fired scout containers are named scout-scout-run-XXXX (compose
+//   run auto-names) which journalctl can't glob. Reading docker.service
+//   broadly and dropping non-scout in-process is cheap and catches the
+//   transient cron containers automatically.
+
+logging {
+	level  = "warn"
+	format = "json"
+}
+
+loki.relabel "journal" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__journal__systemd_unit"]
+		target_label  = "systemd_unit"
+	}
+
+	rule {
+		source_labels = ["__journal_container_name"]
+		target_label  = "container_name"
+	}
+}
+
+loki.source.journal "linode" {
+	max_age       = "12h"
+	path          = "/var/log/journal"
+	relabel_rules = loki.relabel.journal.rules
+	matches       = "_SYSTEMD_UNIT=docker.service"
+	labels = {
+		job = "journald",
+	}
+	forward_to = [loki.process.scout_filter.receiver]
+}
+
+loki.process "scout_filter" {
+	// Drop blank lines.
+	stage.drop {
+		expression = "^\\s*$"
+	}
+
+	// Parse the cyclops fields.
+	stage.json {
+		expressions = {
+			app             = "app",
+			env             = "env",
+			host            = "host",
+			component       = "component",
+			level           = "level",
+			cyclops_version = "cyclops_version",
+		}
+	}
+
+	// Drop everything that isn't a scout cyclops event. Keeps the prod
+	// Loki from receiving stray vispay-staging / corkboard-staging /
+	// gatekeeper-staging traffic that ALSO comes through journald on
+	// this host. Non-cyclops stdout (e.g. python warnings, ffmpeg
+	// progress) has no `app` field and is dropped here too.
+	stage.match {
+		selector = "{job=\"journald\"} | json | app != \"scout\""
+		action   = "drop"
+	}
+
+	stage.template {
+		source   = "source"
+		template = "{{ if .cyclops_version }}cyclops{{ else }}app_stdout{{ end }}"
+	}
+
+	stage.labels {
+		values = {
+			app       = "",
+			env       = "",
+			host      = "",
+			component = "",
+			level     = "",
+			source    = "",
+		}
+	}
+
+	forward_to = [loki.write.scout_prod.receiver]
+}
+
+// Push to prod cyclops Loki via Caddy + Gatekeeper. The API key is
+// issued by Gatekeeper for a service identity (e.g. "scout-staging-pusher")
+// and lives in /home/jonnosan/cyclops/deploy/scout-alloy.env on the
+// staging Linode, mode 600.
+loki.write "scout_prod" {
+	endpoint {
+		url = "https://cyclops.callendina.com/loki/api/v1/push"
+		headers = {
+			"X-API-Key" = sys.env("SCOUT_LOKI_API_KEY"),
+		}
+	}
+}
