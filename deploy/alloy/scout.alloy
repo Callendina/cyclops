@@ -93,9 +93,17 @@ loki.process "scout_filter" {
 	// the same stream); we drop them here so prod cyclops Loki only
 	// gets scout traffic. Non-cyclops stdout has no `app` label and is
 	// dropped by this match too.
+	//
+	// Alloy's stage.match parser requires at least one nested stage —
+	// include a no-op stage.regex so the keep semantics survive
+	// parsing without changing what the matched lines look like.
 	stage.match {
 		selector = "{app=\"scout\"}"
 		action   = "keep"
+
+		stage.regex {
+			expression = "^"
+		}
 	}
 
 	forward_to = [loki.write.scout_prod.receiver]
