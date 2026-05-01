@@ -70,21 +70,13 @@ loki.process "scout_filter" {
 		}
 	}
 
-	// Drop everything that isn't a scout cyclops event. Keeps the prod
-	// Loki from receiving stray vispay-staging / corkboard-staging /
-	// gatekeeper-staging traffic that ALSO comes through journald on
-	// this host. Non-cyclops stdout (e.g. python warnings, ffmpeg
-	// progress) has no `app` field and is dropped here too.
-	stage.match {
-		selector = "{job=\"journald\"} | json | app != \"scout\""
-		action   = "drop"
-	}
-
 	stage.template {
 		source   = "source"
 		template = "{{ if .cyclops_version }}cyclops{{ else }}app_stdout{{ end }}"
 	}
 
+	// Promote extracted fields to log labels BEFORE the match stage, so
+	// the match selector can filter on them.
 	stage.labels {
 		values = {
 			app       = "",
@@ -94,6 +86,16 @@ loki.process "scout_filter" {
 			level     = "",
 			source    = "",
 		}
+	}
+
+	// Keep only scout events. Vispay/corkboard/gatekeeper events also
+	// come through journald on this host (since cyclops-staging tails
+	// the same stream); we drop them here so prod cyclops Loki only
+	// gets scout traffic. Non-cyclops stdout has no `app` label and is
+	// dropped by this match too.
+	stage.match {
+		selector = "{app=\"scout\"}"
+		action   = "keep"
 	}
 
 	forward_to = [loki.write.scout_prod.receiver]
