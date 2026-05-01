@@ -42,7 +42,11 @@ loki.relabel "journal" {
 }
 
 loki.source.journal "linode" {
-	max_age       = "12h"
+	// 5 min, not the staging.alloy default of 12h. Loki rejects entries
+	// older than ~6h ("entry too far behind"); on container restart we
+	// only want to pick up very recent journal entries, not backfill
+	// scout history to prod (cyclops-staging already has the older data).
+	max_age       = "5m"
 	path          = "/var/log/journal"
 	relabel_rules = loki.relabel.journal.rules
 	matches       = "_SYSTEMD_UNIT=docker.service"
