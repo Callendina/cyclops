@@ -46,7 +46,7 @@ loki.source.journal "linode" {
 	path          = "/var/log/journal"
 	relabel_rules = loki.relabel.journal.rules
 	matches       = "_SYSTEMD_UNIT=docker.service"
-	labels = {
+	labels        = {
 		job = "journald",
 	}
 	forward_to = [loki.process.scout_filter.receiver]
@@ -105,7 +105,7 @@ loki.process "scout_filter" {
 // staging Linode, mode 600.
 loki.write "scout_prod" {
 	endpoint {
-		url = "https://cyclops.callendina.com/loki/api/v1/push"
+		url     = "https://cyclops.callendina.com/loki/api/v1/push"
 		headers = {
 			"X-API-Key" = sys.env("SCOUT_LOKI_API_KEY"),
 		}
