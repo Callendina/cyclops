@@ -1,17 +1,13 @@
-# Gatekeeper app config fragment for cyclops (prod).
-#
-# Deploy to /home/jonnosan/gatekeeper/config.d/cyclops-prod.yaml on
-# the prod Linode (vispay-prod.callendina.com). Restart gatekeeper
-# after copying.
-#
-# Registers cyclops.callendina.com as a gatekeeper "app" so the normal
-# forward_auth flow (with API-key fallback) applies. Browser users sign
-# in via standard OAuth/magic-link/SMS; programmatic callers supply
-# `X-API-Key: <gatekeeper-issued-key>`.
+{# Skeletor template for cyclops's per-app gatekeeper config fragment.
+   Mirrors cyclops/deploy/gatekeeper-cyclops-{staging,prod}.yaml. #}
+# Gatekeeper app config fragment for {{ "cyclops-staging" if env == "staging" else "cyclops" }} ({{ env }}).
+# Managed by skeletor — edit templates/gatekeeper/cyclops.yaml.j2 in the
+# skeletor repo, then `ansible-playbook playbooks/deploy-gatekeeper-config.yml
+# -e app_slug=cyclops -e env={{ env }}` to roll out.
 
-name: "Cyclops"
+name: {{ "\"Cyclops (Staging)\"" if env == "staging" else "\"Cyclops\"" }}
 domains:
-  - cyclops.callendina.com
+  - {{ "cyclops-staging.callendina.com" if env == "staging" else "cyclops.callendina.com" }}
 protected_paths:
   - /*
 # Tight allowlist — the cyclops stack is operator-internal.
