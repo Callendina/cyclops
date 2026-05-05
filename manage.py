@@ -39,7 +39,7 @@ ENV_HOSTS = {
     "prod":    "prod.callendina.com",
     "staging": "staging.callendina.com",
 }
-SSH_USER = "jonnosan"
+SSH_USER = "skeletor"
 REPO_DIR = "/srv/cyclops"
 COMPOSE_DIR = "/srv/cyclops/deploy"  # docker compose runs from the deploy/ subdir
 DATA_DIR = "/srv/cyclops/data"
@@ -82,7 +82,7 @@ def cmd_provision(env: str) -> None:
         echo '=== Provision complete ==='
         echo
         echo 'Next steps:'
-        echo '  1. If cyclops needs a .env, place it at {DATA_DIR}/.env (mode 600, owned by jonnosan)'
+        echo '  1. If cyclops needs a .env, place it at {DATA_DIR}/.env (mode 600, owned by skeletor)'
         echo '  2. Run: ./manage.py deploy {env}'
     """))
 
