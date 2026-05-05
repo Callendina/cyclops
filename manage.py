@@ -74,16 +74,25 @@ def cmd_provision(env: str) -> None:
     # Standard host setup: docker, cyclops user (UID 1103), /srv/cyclops/{,data}
     wf.provision_host(host, app="cyclops", uid=CYCLOPS_UID, gid=CYCLOPS_GID, user=SSH_USER)
 
-    # Cyclops-specific: clone repo into /srv/cyclops (operator must have a
-    # deploy key for Callendina/cyclops on the host).
+    # Cyclops-specific: bring repo content into /srv/cyclops/ (operator
+    # must have a deploy key for Callendina/cyclops on the host).
+    #
+    # Note: `git clone <url> .` refuses non-empty target. provision_host
+    # creates /srv/cyclops/data/ first, so the dir is non-empty when we
+    # get here. Use `git init + remote add + fetch + checkout` instead —
+    # works alongside the existing data/ subdir.
     script = textwrap.dedent(f"""\
         set -e
-        echo '=== Cloning cyclops repo (idempotent) ==='
+        echo '=== Initialise cyclops repo (idempotent) ==='
         if [ ! -d {REPO_DIR}/.git ]; then
             cd {REPO_DIR}
-            git clone {GITHUB_REPO} .
+            git init -b main
+            git remote add origin {GITHUB_REPO}
+            git fetch origin main
+            git checkout -B main origin/main
+            echo "  repo initialised at {REPO_DIR}"
         else
-            echo "  cyclops repo already cloned at {REPO_DIR}"
+            echo "  cyclops repo already initialised at {REPO_DIR}"
         fi
         echo '=== Provision complete ==='
         echo
